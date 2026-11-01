@@ -47,9 +47,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full flex-col">
         <Motion />
-              <Navbar />
+        <Navbar />
         <main className="flex-1 pt-20 sm:pt-24">{children}</main>
-  <footer className="mt-28 overflow-hidden bg-ink text-bg">
+        <footer className="mt-28 overflow-hidden bg-ink text-bg">
           <div className="mx-auto max-w-6xl px-5 pt-16 sm:px-8">
             <div className="flex flex-col justify-between gap-10 md:flex-row">
               <p className="max-w-sm font-display text-2xl font-semibold leading-snug">
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </p>
           </div>
           <div className="border-t border-bg/15 py-5 text-center font-mono text-xs uppercase tracking-widest text-bg/60">
-            © 2026 WHSCOMPLY
+            © 2026 WHSCOMPLY. Powered by Briesa.
           </div>
         </footer>
       </body>

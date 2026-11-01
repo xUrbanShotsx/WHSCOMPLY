@@ -19,9 +19,18 @@ export default function About() {
       </PageHeader>
       <section className="mx-auto mt-16 grid max-w-6xl gap-10 px-5 sm:px-8 md:grid-cols-3">
         {[
-          ["Plain", "Software a foreman can use in gloves, on a phone, at the gate."],
-          ["Checkable", "Every claim in the product can be exported and shown to an inspector."],
-          ["Early", "We flag what is owed while there is still time to fix it."],
+          [
+            "Plain",
+            "Software a foreman can use in gloves, on a phone, at the gate.",
+          ],
+          [
+            "Checkable",
+            "Every claim in the product can be exported and shown to an inspector.",
+          ],
+          [
+            "Early",
+            "We flag what is owed while there is still time to fix it.",
+          ],
         ].map(([t, d]) => (
           <div key={t} data-reveal className="border-t border-ink pt-6">
             <h2 className="font-display text-3xl font-extrabold">{t}</h2>

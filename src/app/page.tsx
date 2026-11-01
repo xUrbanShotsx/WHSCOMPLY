@@ -293,6 +293,9 @@ export default function WhsHome() {
               </a>
             </Magnetic>
           </div>
+          <p className="mt-10 font-mono text-xs uppercase tracking-widest">
+            Powered by Briesa
+          </p>
         </div>
       </section>
     </>

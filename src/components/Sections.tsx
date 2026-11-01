@@ -75,9 +75,14 @@ export function CtaBand() {
         </p>
         <div className="mt-9">
           <Magnetic>
-            <ButtonLink href="mailto:hello@whscomply.com">Book a demo</ButtonLink>
+            <ButtonLink href="mailto:hello@whscomply.com">
+              Book a demo
+            </ButtonLink>
           </Magnetic>
         </div>
+        <p className="mt-10 font-mono text-xs uppercase tracking-widest">
+          Powered by Briesa
+        </p>
       </div>
     </section>
   );
