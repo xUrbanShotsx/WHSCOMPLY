@@ -7,6 +7,10 @@ import {
 } from "@/components/WhsMocks";
 import { Eyebrow } from "@/components/Sections";
 import { Icon } from "@/components/Icons";
+import { FaqList } from "@/components/Faq";
+import { homeFaqs } from "@/lib/content";
+import { faqPage, JsonLd } from "@/lib/jsonld";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { Magnetic } from "@/components/Magnetic";
 
 const cta =
@@ -55,6 +59,19 @@ const rows = [
 export default function WhsHome() {
   return (
     <>
+      <JsonLd data={faqPage(homeFaqs)} />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: SITE_NAME,
+          url: SITE_URL,
+          description: DEFAULT_DESCRIPTION,
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web, iOS, Android",
+          areaServed: { "@type": "Country", name: "Australia" },
+        }}
+      />
       {/* hero */}
       <section className="relative overflow-hidden">
         <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">
@@ -263,6 +280,19 @@ export default function WhsHome() {
           </div>
           <div data-reveal>
             <SiteTrailMock dark />
+          </div>
+        </div>
+      </section>
+
+      {/* faq */}
+      <section className="mx-auto mt-28 max-w-3xl px-5 sm:px-8">
+        <div data-reveal>
+          <Eyebrow>Questions</Eyebrow>
+          <h2 className="mt-5 font-display text-[clamp(2rem,4.2vw,3.5rem)] font-extrabold leading-[1.02] tracking-tight">
+            Common questions about WHS compliance software.
+          </h2>
+          <div className="mt-10">
+            <FaqList faqs={homeFaqs} />
           </div>
         </div>
       </section>

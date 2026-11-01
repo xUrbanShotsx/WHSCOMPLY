@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { CtaBand, PageHeader } from "@/components/Sections";
 
-export const metadata: Metadata = { title: "About | WHSCOMPLY" };
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "About WHSCOMPLY: safety software for the people who run building sites, built to be used in gloves, on a phone, at the gate.",
+  alternates: { canonical: "/about" },
+};
 
 export default function About() {
   return (

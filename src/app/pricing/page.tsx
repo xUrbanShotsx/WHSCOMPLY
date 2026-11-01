@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { ButtonLink, CtaBand, PageHeader } from "@/components/Sections";
 
-export const metadata: Metadata = { title: "Pricing | WHSCOMPLY" };
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "WHSCOMPLY pricing for builders and subcontractors. Priced by project, not per worker. Book a demo for a quote.",
+  alternates: { canonical: "/pricing" },
+};
 
 const plans = [
   [

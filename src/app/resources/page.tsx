@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { CtaBand, PageHeader } from "@/components/Sections";
 
-export const metadata: Metadata = { title: "Resources | WHSCOMPLY" };
+export const metadata: Metadata = {
+  title: "Resources",
+  description:
+    "Guides and checklists for builders and safety managers: SWMS, site setup, subcontractor tickets and incident reports.",
+  alternates: { canonical: "/resources" },
+};
 
 const items = [
   ["Guide", "What a SWMS needs to contain before work starts"],

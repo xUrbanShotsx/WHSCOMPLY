@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { topics } from "@/lib/content";
 import { CtaBand, PageHeader } from "@/components/Sections";
 import { SwmsMock, TicketsMock, IncidentMock } from "@/components/WhsMocks";
 
-export const metadata: Metadata = { title: "Solutions | WHSCOMPLY" };
+export const metadata: Metadata = {
+  title: "Solutions",
+  description:
+    "WHSCOMPLY solutions for builders: SWMS, site inductions, white cards and licences, subcontractors, inspections and incidents.",
+  alternates: { canonical: "/solutions" },
+};
 
 const rows = [
   [
@@ -48,6 +55,21 @@ export default function Solutions() {
             <div data-reveal>{v}</div>
           </div>
         ))}
+      </section>
+      <section className="mx-auto mt-24 max-w-6xl px-5 sm:px-8">
+        <p className="eyebrow">More solutions</p>
+        <ul className="mt-5 divide-y divide-line border-y border-line">
+          {topics.map((t) => (
+            <li key={t.slug}>
+              <Link
+                href={`/solutions/${t.slug}`}
+                className="row-hover block py-3 font-medium"
+              >
+                {t.nav}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
       <CtaBand />
     </>
