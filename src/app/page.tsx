@@ -1,11 +1,5 @@
-import {
-  IncidentMock,
-  SiteBoardMock,
-  SiteTrailMock,
-  SwmsMock,
-  TicketsMock,
-} from "@/components/WhsMocks";
-import { Eyebrow } from "@/components/Sections";
+import { SiteBoardMock, SiteTrailMock } from "@/components/WhsMocks";
+import { CtaBand, Eyebrow } from "@/components/Sections";
 import { Icon } from "@/components/Icons";
 import { FaqList } from "@/components/Faq";
 import { homeFaqs } from "@/lib/content";
@@ -16,44 +10,40 @@ import { Magnetic } from "@/components/Magnetic";
 const cta =
   "inline-flex items-center gap-2 rounded-full px-7 py-3.5 font-semibold transition-colors duration-200";
 
-const rows = [
-  {
-    n: "01",
-    id: "features",
-    eyebrow: "SWMS and inductions",
-    title: "Safe work method statements that every worker actually signs.",
-    body: "Build a SWMS from your own task library, push it to the crew's phones and sign on at the gate. If someone has not signed, the foreman sees the name before the work starts.",
-    points: [
-      "Reusable SWMS templates for high risk construction work",
-      "Site inductions that sign workers on once per project",
-      "Version history, so you can show which SWMS was live on which day",
-    ],
-    visual: <SwmsMock />,
-  },
-  {
-    n: "02",
-    eyebrow: "People and subcontractors",
-    title: "White cards, licences and insurances that warn you early.",
-    body: "Every worker and subcontractor carries their tickets with them into the system. Expiries are flagged weeks ahead, and a lapsed licence blocks sign-on instead of surfacing in an audit.",
-    points: [
-      "General induction cards and high risk work licences on file",
-      "Subcontractor prequalification, insurance and WorkCover dates",
-      "Alerts to the site manager and the subbie before expiry",
-    ],
-    visual: <TicketsMock />,
-  },
-  {
-    n: "03",
-    eyebrow: "Incidents and inspections",
-    title: "Incident reports closed out properly, not left in the ute.",
-    body: "Report a near miss from site with photos in under a minute. Each report walks through the same steps, including whether it needs notifying to the regulator, and stays open until it is closed out.",
-    points: [
-      "Incident, near miss and hazard reports from any phone",
-      "Plant, scaffold and daily site inspection checklists",
-      "Corrective actions assigned, dated and tracked to done",
-    ],
-    visual: <IncidentMock />,
-  },
+/** Descriptors of the builders WHSCOMPLY was built with. Add named customers here once they have agreed to be listed. */
+const clients = [
+  "Residential builders",
+  "Commercial fit-out",
+  "Civil contractors",
+  "Specialist subbies",
+  "Site managers",
+];
+
+const pains: [string, string][] = [
+  [
+    "The SWMS on site is not the one the crew signed.",
+    "One live version per task. Every signature is kept against the version and the day.",
+  ],
+  [
+    "Nobody knows who is on site until the muster point.",
+    "Workers sign on at the gate, so the list of people on site is always current.",
+  ],
+  [
+    "A licence lapses because the reminder was in someone's phone.",
+    "Alerts before every expiry, and a lapsed ticket is flagged at sign-on.",
+  ],
+  [
+    "Subcontractor insurances are found out of date after the work starts.",
+    "Policy and WorkCover dates are tracked, and the subbie is reminded directly.",
+  ],
+  [
+    "Near misses are mentioned at smoko and never written down.",
+    "Report from a phone in a minute, with photos, and follow the same close-out steps every time.",
+  ],
+  [
+    "An audit means days of digging through folders and the ute.",
+    "Every write is logged with the previous value, and the audit pack is an export.",
+  ],
 ];
 
 export default function WhsHome() {
@@ -74,7 +64,7 @@ export default function WhsHome() {
       />
       {/* hero */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-14 px-5 pb-20 pt-14 sm:px-8 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
             <div data-load>
               <Eyebrow>WHS compliance software for builders</Eyebrow>
@@ -94,7 +84,7 @@ export default function WhsHome() {
             <div data-load className="mt-9 flex flex-wrap items-center gap-4">
               <Magnetic>
                 <a
-                  href="#book"
+                  href="/demo"
                   className={`${cta} bg-ink text-bg hover:bg-ink/85`}
                 >
                   Book a demo <Icon name="arrow" className="h-4 w-4" />
@@ -108,7 +98,7 @@ export default function WhsHome() {
               </a>
             </div>
           </div>
-          <div data-load className="xl:-mr-16">
+          <div data-load>
             <div data-parallax="6">
               <div className="float">
                 <SiteBoardMock />
@@ -119,7 +109,11 @@ export default function WhsHome() {
       </section>
 
       {/* scope strip */}
-      <div className="overflow-hidden border-y border-line bg-tint py-4 font-mono text-xs uppercase tracking-[0.18em]">
+      <div className="relative overflow-hidden bg-[linear-gradient(110deg,oklch(0.19_0.02_255),oklch(0.32_0.04_255)_55%,oklch(0.2_0.02_255))] py-5 font-mono text-xs uppercase tracking-[0.18em] text-bg shadow-[inset_0_1px_0_oklch(1_0_0/0.18),inset_0_-1px_0_oklch(0_0_0/0.4)]">
+        <div
+          aria-hidden="true"
+          className="glow-x pointer-events-none absolute h-24 w-72 rounded-full bg-accent/70 blur-3xl"
+        />
         <ul
           className="marquee flex w-max gap-10 whitespace-nowrap"
           aria-label="What WHSCOMPLY covers"
@@ -191,37 +185,63 @@ export default function WhsHome() {
         </div>
       </section>
 
-      {/* feature rows */}
-      <section className="mx-auto mt-28 max-w-6xl space-y-28 px-5 sm:px-8">
-        {rows.map((r, i) => (
-          <div
-            key={r.n}
-            id={r.id}
-            className="grid scroll-mt-28 items-center gap-12 lg:grid-cols-2"
-          >
-            <div data-reveal className={i % 2 ? "lg:order-2" : ""}>
-              <p className="font-mono text-sm text-ink-soft">{r.n}</p>
-              <div className="mt-3">
-                <Eyebrow>{r.eyebrow}</Eyebrow>
-              </div>
-              <h2 className="mt-5 font-display text-[clamp(1.9rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight">
-                {r.title}
-              </h2>
-              <p className="mt-5 max-w-md text-ink-soft">{r.body}</p>
-              <ul
-                data-stagger
-                className="mt-6 divide-y divide-line border-y border-line"
+      {/* who we build with + pain points */}
+      <section className="mx-auto mt-28 max-w-6xl px-5 sm:px-8">
+        <div
+          data-reveal
+          className="flex flex-col gap-4 border-y border-line py-6 lg:flex-row lg:items-center lg:gap-10"
+        >
+          <p className="shrink-0 font-mono text-xs uppercase tracking-widest text-ink-soft">
+            Built with builders at
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {clients.map((c) => (
+              <li
+                key={c}
+                className="rounded-full bg-tint px-4 py-2 text-sm font-semibold"
               >
-                {r.points.map((p) => (
-                  <li key={p} className="row-hover py-3 text-sm font-medium">
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div data-reveal>{r.visual}</div>
+                {c}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div
+          id="features"
+          className="mt-20 grid scroll-mt-28 grid-cols-[minmax(0,1fr)] gap-12 lg:grid-cols-[0.8fr_1.2fr]"
+        >
+          <div data-reveal className="lg:sticky lg:top-28 lg:self-start">
+            <Eyebrow>Where it goes wrong</Eyebrow>
+            <h2 className="mt-5 font-display text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.02] tracking-tight">
+              Six places sites lose the paperwork.
+            </h2>
+            <p className="mt-5 max-w-sm text-ink-soft">
+              These are the gaps builders tell us about. Each one has a fix that
+              does not depend on someone remembering.
+            </p>
           </div>
-        ))}
+          <ol data-stagger className="border-t border-ink">
+            {pains.map(([pain, fix], i) => (
+              <li
+                key={pain}
+                className="row-hover grid gap-3 border-b border-line py-6 md:grid-cols-[2.5rem_1fr_1fr] md:gap-6"
+              >
+                <span className="font-mono text-sm text-ink-soft">
+                  0{i + 1}
+                </span>
+                <p className="font-display text-xl font-extrabold leading-snug">
+                  {pain}
+                </p>
+                <p className="text-ink-soft">
+                  <span className="mb-1 block font-mono text-[0.7rem] uppercase tracking-widest text-ink">
+                    With WHSCOMPLY
+                  </span>
+                  {fix}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* how it works */}
@@ -279,7 +299,7 @@ export default function WhsHome() {
             </p>
           </div>
           <div data-reveal>
-            <SiteTrailMock dark />
+            <SiteTrailMock />
           </div>
         </div>
       </section>
@@ -297,37 +317,7 @@ export default function WhsHome() {
         </div>
       </section>
 
-      {/* cta */}
-      <section
-        id="book"
-        className="mx-auto mt-28 max-w-6xl scroll-mt-24 px-5 sm:px-8"
-      >
-        <div
-          data-reveal
-          className="relative overflow-hidden rounded-[2rem] bg-accent px-7 py-16 text-ink sm:px-14 sm:py-20"
-        >
-          <h2 className="max-w-3xl font-display text-[clamp(2.2rem,5vw,4.2rem)] font-extrabold leading-[1] tracking-tight">
-            Find the gaps before an inspector does.
-          </h2>
-          <p className="mt-5 max-w-lg text-lg">
-            Thirty minutes, your SWMS and your site setup. Bring one messy
-            project and we will clear it live.
-          </p>
-          <div className="mt-9">
-            <Magnetic>
-              <a
-                href="mailto:hello@whscomply.com"
-                className={`${cta} bg-ink text-bg hover:bg-ink/85`}
-              >
-                Book a demo <Icon name="arrow" className="h-4 w-4" />
-              </a>
-            </Magnetic>
-          </div>
-          <p className="mt-10 font-mono text-xs uppercase tracking-widest">
-            Powered by Briesa
-          </p>
-        </div>
-      </section>
+      <CtaBand />
     </>
   );
 }

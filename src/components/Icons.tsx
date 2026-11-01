@@ -52,6 +52,22 @@ const paths: Record<string, ReactNode> = {
       <path d="M10 20v-5h4v5" />
     </>
   ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.500" />
+      <path d="M16 16l4.500 4.500" />
+    </>
+  ),
+  download: <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 018 0v3" />
+    </>
+  ),
+  clip: (
+    <path d="M20 11l-8 8a5 5 0 01-7-7l8.500-8.500a3.500 3.500 0 015 5L10 17a2 2 0 01-3-3l7.500-7.500" />
+  ),
   home: <path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" />,
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,

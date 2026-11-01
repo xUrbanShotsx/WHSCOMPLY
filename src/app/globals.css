@@ -205,3 +205,54 @@ a > svg:last-child {
     display: none;
   }
 }
+
+/* let grid children shrink below their content width so mockups never force sideways scroll */
+main .grid > * {
+  min-width: 0;
+}
+
+/* the stage glow travels around the frame edge and back again */
+.glow {
+  left: 0;
+  top: 100%;
+  transform: translate(-50%, -50%);
+}
+.motion .glow {
+  animation: glow-orbit 16s ease-in-out infinite alternate;
+}
+@keyframes glow-orbit {
+  0% {
+    left: 0;
+    top: 100%;
+  }
+  33% {
+    left: 0;
+    top: 0;
+  }
+  66% {
+    left: 100%;
+    top: 0;
+  }
+  100% {
+    left: 100%;
+    top: 100%;
+  }
+}
+
+/* a sheen sweeps along the dark scope strip */
+.glow-x {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.motion .glow-x {
+  animation: glow-sweep 12s ease-in-out infinite alternate;
+}
+@keyframes glow-sweep {
+  from {
+    left: 0;
+  }
+  to {
+    left: 100%;
+  }
+}
