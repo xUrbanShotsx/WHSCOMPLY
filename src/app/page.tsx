@@ -5,7 +5,7 @@ import {
   SwmsMock,
   TicketsMock,
 } from "@/components/WhsMocks";
-import { Eyebrow } from "@/components/Eyebrow";
+import { Eyebrow } from "@/components/Sections";
 import { Icon } from "@/components/Icons";
 import { Magnetic } from "@/components/Magnetic";
 
