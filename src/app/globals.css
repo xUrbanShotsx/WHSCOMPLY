@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --bg: oklch(1 0 0);
+  --surface: oklch(1 0 0);
+  --tint: oklch(0.95 0.025 85);
+  --line: oklch(0.88 0.02 85);
+  --ink: oklch(0.23 0.02 255);
+  --ink-soft: oklch(0.45 0.02 255);
+  --accent: #ff8a00;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-tint: var(--tint);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-accent: var(--accent);
+  --font-display: var(--font-manrope), system-ui, sans-serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-plex), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: light;
+}
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  letter-spacing: -0.005em;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* film grain, static and faint */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* signature: the key word sits on survey tape */
+.tape {
+  display: inline-block;
+  background-color: var(--accent);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 14px,
+    oklch(0.23 0.02 255 / 0.07) 14px 28px
+  );
+  color: var(--ink);
+  padding: 0 0.18em;
+  transform: rotate(-1.2deg);
+}
+
+.row-hover {
+  transition:
+    background-color 0.2s,
+    padding-left 0.2s;
+}
+.row-hover:hover {
+  background: var(--tint);
+  padding-left: 1rem;
+}
+
+/* hero board rows settle in one by one */
+.motion .board-row {
+  animation: settle 0.6s both ease-out;
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+/* tape wipes in across the key word */
+.motion .tape {
+  animation: wipe 0.8s 0.5s both cubic-bezier(0.7, 0, 0.2, 1);
+}
+@keyframes wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* gentle idle float on the hero board */
+.motion .float {
+  animation: float 7s ease-in-out infinite;
+}
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* scope strip scrolls slowly */
+.motion .marquee {
+  animation: marquee 32s linear infinite;
+}
+.motion .marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* lift on hover */
+.lift {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.lift:hover {
+  transform: translateY(-6px);
+}
+
+/* arrow nudges on hover */
+a:hover > svg:last-child {
+  transform: translateX(3px);
+}
+a > svg:last-child {
+  transition: transform 0.2s;
+}
+
+/* start hidden only when JS motion is active */
+.motion [data-reveal],
+.motion [data-stagger] > * {
+  opacity: 0;
+}
+
+/* hero load-in is pure CSS so it plays on first paint, before any JS arrives */
+.motion [data-load] {
+  animation: rise 0.9s both cubic-bezier(0.16, 1, 0.3, 1);
+}
+.motion [data-load]:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.motion [data-load]:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.motion [data-load]:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.motion [data-load]:nth-child(5) {
+  animation-delay: 0.4s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion [data-reveal],
+  .motion [data-stagger] > * {
+    opacity: 1;
+  }
+  .motion [data-load] {
+    animation: none;
+  }
+  .motion .board-row {
+    animation: none;
+  }
+  body::after {
+    display: none;
+  }
+}
