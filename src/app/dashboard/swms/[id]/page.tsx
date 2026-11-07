@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useStore } from "@/components/app/DemoStore";
 import { StepForm } from "@/components/app/forms";
+import { SwmsReviewPanel } from "@/components/app/ai-tools";
 import {
   Avatar,
   btnDark,
@@ -123,6 +124,12 @@ export default function SwmsDetail() {
           This version was replaced. It is kept so you can show what was in
           force on the days it was signed.
         </p>
+      )}
+
+      {x.status !== "Superseded" && (
+        <div className="mb-6">
+          <SwmsReviewPanel swms={x} />
+        </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">

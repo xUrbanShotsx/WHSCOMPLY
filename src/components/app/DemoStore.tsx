@@ -59,7 +59,7 @@ import {
 } from "@/lib/data";
 import { todayISO } from "@/lib/format";
 
-const KEY = "whscomply-demo-v3";
+const KEY = "whscomply-demo-v4";
 
 export const ALL = "all";
 
@@ -84,6 +84,8 @@ type Saved = {
   drills: Drill[];
   visitors: Visitor[];
   docs: Doc[];
+  /** checklists built by the user or the AI, offered alongside the standard inspection checklists */
+  customTemplates: { id: string; name: string; items: string[] }[];
 };
 
 const SEED: Saved = {
@@ -106,6 +108,7 @@ const SEED: Saved = {
   drills: seedDrills,
   visitors: seedVisitors,
   docs: seedDocs,
+  customTemplates: [],
 };
 
 /* ---- a tiny external store over localStorage, so state survives navigation and reloads ---- */
@@ -135,7 +138,8 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.chemicals) &&
     Array.isArray(p.drills) &&
     Array.isArray(p.visitors) &&
-    Array.isArray(p.docs)
+    Array.isArray(p.docs) &&
+    Array.isArray(p.customTemplates)
   );
 }
 
@@ -347,6 +351,8 @@ type Store = Saved & {
   signOutVisitor: (id: string) => void;
 
   addDocument: (i: NewDoc) => void;
+  addTemplate: (name: string, items: string[]) => void;
+  removeTemplate: (id: string) => void;
   signDoc: (id: string, workerId: string) => void;
   reviewDoc: (id: string, version: string, reviewDue: string) => void;
   toggleAttendance: (id: string, workerId: string) => void;
@@ -833,7 +839,11 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
 
   startInspection: (projectId, kind, inspector) => {
     const id = `in-${uid()}`;
-    const items = (INSPECTION_TEMPLATES[kind] ?? []).map((text, i) => ({
+    const source =
+      INSPECTION_TEMPLATES[kind] ??
+      current().customTemplates.find((t) => t.name === kind)?.items ??
+      [];
+    const items = source.map((text, i) => ({
       id: `i${i}`,
       text,
       result: null as InspResult,
@@ -1328,6 +1338,28 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  addTemplate: (name, items) =>
+    act(
+      (s) => ({
+        ...s,
+        customTemplates: [
+          ...s.customTemplates,
+          { id: `ct-${uid()}`, name, items },
+        ],
+      }),
+      ev(
+        "Inspections",
+        ALL,
+        `saved the checklist ${name}`,
+        "Not saved",
+        `${items.length} items`,
+      ),
+    ),
+  removeTemplate: (id) =>
+    update((s) => ({
+      ...s,
+      customTemplates: s.customTemplates.filter((t) => t.id !== id),
+    })),
   addDocument: (i) =>
     act(
       (s) => ({

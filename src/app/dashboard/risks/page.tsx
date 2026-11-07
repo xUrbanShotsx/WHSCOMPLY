@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
 import { RiskForm } from "@/components/app/forms";
+import { PhotoHazardsModal } from "@/components/app/ai-tools";
+import { aiBtnLight, Sparkle } from "@/components/app/ai";
 import {
   btnDark,
   Card,
@@ -37,6 +39,7 @@ export default function RisksPage() {
   const [status, setStatus] = useState<(typeof STATUS)[number]>("All");
   const [cell, setCell] = useState<[number, number] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const [editing, setEditing] = useState<Risk | null>(null);
 
   const live = useMemo(
@@ -75,13 +78,22 @@ export default function RisksPage() {
         title="Risk register"
         sub="Every hazard, how bad it is before and after controls, who owns it and when it is next reviewed."
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={btnDark}
-          >
-            <Icon name="plus" className="h-4 w-4" /> Add risk
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setPhoto(true)}
+              className={aiBtnLight}
+            >
+              <Sparkle /> Spot hazards in a photo
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className={btnDark}
+            >
+              <Icon name="plus" className="h-4 w-4" /> Add risk
+            </button>
+          </>
         }
       />
 
@@ -230,6 +242,7 @@ export default function RisksPage() {
       </div>
 
       {adding && <RiskForm onClose={() => setAdding(false)} />}
+      {photo && <PhotoHazardsModal onClose={() => setPhoto(false)} />}
       {editing && (
         <RiskForm
           initial={editing}

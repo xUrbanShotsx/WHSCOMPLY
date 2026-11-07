@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useStore } from "@/components/app/DemoStore";
 import { ActionForm } from "@/components/app/forms";
+import { InvestigatePanel } from "@/components/app/ai-tools";
 import {
   btnDark,
   btnLight,
@@ -114,6 +115,12 @@ export default function IncidentDetail() {
           </li>
         ))}
       </ol>
+
+      {!closed && (
+        <div className="mb-6">
+          <InvestigatePanel incident={x} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">

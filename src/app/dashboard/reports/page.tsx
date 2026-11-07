@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
+import { SummaryPanel } from "@/components/app/ai-tools";
 import {
   btnLight,
   Card,
@@ -219,6 +220,10 @@ export default function ReportsPage() {
           value={String(m.leading)}
           note="near misses and hazards reported"
         />
+      </div>
+
+      <div className="mt-6">
+        <SummaryPanel />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

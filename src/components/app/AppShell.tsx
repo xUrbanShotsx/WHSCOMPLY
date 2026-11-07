@@ -17,6 +17,8 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "grid" },
+      { href: "/dashboard/assistant", label: "Assistant", icon: "sparkle" },
+      { href: "/dashboard/ai", label: "AI toolkit", icon: "list" },
       { href: "/dashboard/reports", label: "Reports", icon: "scale" },
     ],
   },

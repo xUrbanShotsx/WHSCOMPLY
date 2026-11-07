@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
 import { InspectionStartForm } from "@/components/app/forms";
+import { TemplateModal } from "@/components/app/ai-tools";
+import { aiBtnLight, Sparkle } from "@/components/app/ai";
 import {
   btnDark,
   Card,
@@ -24,6 +26,7 @@ export default function InspectionsPage() {
   const router = useRouter();
   const [f, setF] = useState<(typeof FILTERS)[number]>("All");
   const [adding, setAdding] = useState(false);
+  const [building, setBuilding] = useState(false);
 
   const list = s.inspectionsIn
     .filter((i) => f === "All" || i.status === f)
@@ -35,13 +38,22 @@ export default function InspectionsPage() {
         title="Inspections"
         sub="Daily walks and scheduled checks. A failed item raises a corrective action automatically."
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={btnDark}
-          >
-            <Icon name="plus" className="h-4 w-4" /> Start inspection
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setBuilding(true)}
+              className={aiBtnLight}
+            >
+              <Sparkle /> Build a checklist with AI
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className={btnDark}
+            >
+              <Icon name="plus" className="h-4 w-4" /> Start inspection
+            </button>
+          </>
         }
       />
       <Card>
@@ -110,6 +122,7 @@ export default function InspectionsPage() {
           onStarted={(id) => router.push(`/dashboard/inspections/${id}`)}
         />
       )}
+      {building && <TemplateModal onClose={() => setBuilding(false)} />}
     </>
   );
 }
