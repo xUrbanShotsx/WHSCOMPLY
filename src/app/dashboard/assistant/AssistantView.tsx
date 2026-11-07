@@ -15,7 +15,6 @@ import {
   type IncidentType,
   type RiskLevel,
 } from "@/lib/data";
-import { SUGGESTIONS } from "@/lib/ai-context";
 import { todayISO } from "@/lib/format";
 import {
   readChat,
@@ -208,24 +207,6 @@ export function AssistantView() {
   const empty = messages.length === 0;
   const first = me.name.split(" ")[0];
 
-  const GROUPS = [
-    {
-      label: "Ask about WHS",
-      icon: "shield" as const,
-      list: SUGGESTIONS.safety,
-    },
-    {
-      label: "Ask about your sites",
-      icon: "grid" as const,
-      list: SUGGESTIONS.site,
-    },
-    {
-      label: "Tell me what to log",
-      icon: "plus" as const,
-      list: SUGGESTIONS.act,
-    },
-  ];
-
   return (
     <div className="mx-auto flex min-h-[calc(100vh-11rem)] max-w-3xl flex-col">
       {!empty && (
@@ -237,38 +218,6 @@ export function AssistantView() {
       )}
 
       <div className="flex-1 space-y-6 pb-6">
-        {empty && (
-          <div className="pt-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              {GROUPS.map((g) => (
-                <section
-                  key={g.label}
-                  className="rounded-3xl border border-line bg-surface p-4"
-                >
-                  <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/25 text-ink">
-                      <Icon name={g.icon} className="h-3.5 w-3.5" />
-                    </span>
-                    {g.label}
-                  </p>
-                  <div className="space-y-2">
-                    {g.list.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => void send(q)}
-                        className="w-full rounded-2xl bg-bg px-3.5 py-3 text-left text-sm font-medium leading-snug transition-colors hover:bg-accent/15"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </div>
-        )}
-
         {messages.map((m, i) => {
           if (m.role === "user")
             return (
