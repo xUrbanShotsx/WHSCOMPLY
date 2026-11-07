@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useStore } from "@/components/app/DemoStore";
 import { ActionForm } from "@/components/app/forms";
 import { InvestigatePanel } from "@/components/app/ai-tools";
+import { AttachField } from "@/components/app/Attachments";
 import {
   btnDark,
   btnLight,
@@ -128,6 +129,12 @@ export default function IncidentDetail() {
             <CardHead title="What happened" />
             <div className="space-y-4 px-5 py-4 text-sm">
               <p>{x.description}</p>
+              <AttachField
+                files={x.files ?? []}
+                onChange={(files) => s.updateIncident(x.id, { files })}
+                disabled={closed}
+                label="Add photos"
+              />
               {x.people && (
                 <p>
                   <span className="font-semibold">People involved: </span>

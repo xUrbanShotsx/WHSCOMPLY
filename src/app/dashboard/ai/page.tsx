@@ -41,6 +41,20 @@ const GROUPS: { label: string; blurb: string; tools: Tool[] }[] = [
         icon: "id",
       },
       {
+        name: "Voice defects",
+        body: "Talk through a defect on site and it fills in the title, location, priority, due date and who should fix it, only assigning people who are on your project.",
+        where: "Defects",
+        href: "/dashboard/defects",
+        icon: "pencil",
+      },
+      {
+        name: "Drawing title-block reader",
+        body: "Upload a drawing sheet and it reads the number, title, discipline and revision. If the number already exists it is filed as a new revision, and the old one is marked superseded.",
+        where: "Drawings",
+        href: "/dashboard/drawings",
+        icon: "file",
+      },
+      {
         name: "Insurance certificate reader",
         body: "Upload a certificate of currency or workers' compensation certificate and it reads the cover type and expiry, checking the insured name against the subcontractor.",
         where: "Subcontractors",

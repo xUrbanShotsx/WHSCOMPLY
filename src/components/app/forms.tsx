@@ -1106,11 +1106,19 @@ export function IncidentForm({
         <Field label="Location on site">
           <input
             required
+            list="incident-locations"
             value={v.location}
             onChange={set("location")}
             className={field}
             placeholder="Level 3, grid C4"
           />
+          <datalist id="incident-locations">
+            {(projects.find((p) => p.id === v.projectId)?.locations ?? []).map(
+              (l) => (
+                <option key={l} value={l} />
+              ),
+            )}
+          </datalist>
         </Field>
         <Field label="Date">
           <input

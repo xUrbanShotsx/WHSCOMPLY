@@ -279,6 +279,48 @@ Task: rewrite the user's rough site text as asked. Keep every fact, name, number
     shape: (r) => ({ text: str(r.text, 5000) }),
   },
 
+  defect: {
+    system: `${BASE}
+
+Task: turn a spoken or typed description of a construction defect into a structured defect record. Only use facts in the description. Choose the priority by safety and programme impact: anything that exposes workers or the public to harm is Critical. Only assign to a name from the allowed list, and leave it empty if none fits.`,
+    prompt: (i) =>
+      `Return JSON: {"title": short title, "description": clear description, "location": where on site, "priority": Low | Medium | High | Critical, "assignee": one name from ALLOWED or empty, "days": days from today to fix, 0 to 60}\n\nALLOWED ASSIGNEES\n${j(i.assignees, 1500)}\n\nINPUT\n${j(i.text)}`,
+    shape: (r, i) => {
+      const allowed = Array.isArray(i.assignees)
+        ? (i.assignees as unknown[]).map((x) => str(x, 120))
+        : [];
+      const a = str(r.assignee, 120);
+      return {
+        title: str(r.title, 140),
+        description: str(r.description, 900),
+        location: str(r.location, 140),
+        priority: pick(
+          r.priority,
+          ["Low", "Medium", "High", "Critical"] as const,
+          "Medium",
+        ),
+        assignee:
+          allowed.find((x) => x.toLowerCase() === a.toLowerCase()) ?? "",
+        days: num(r.days, 0, 60, 7),
+      };
+    },
+  },
+
+  drawing: {
+    system: `${BASE}
+
+Task: read the title block of a construction drawing (a photo or PDF) and return its details. Read only what is printed. If a field is not visible, leave it empty. The revision is the latest revision letter or number in the revision table.`,
+    needsFile: true,
+    prompt: () =>
+      `Return JSON: {"number": drawing number, "title": drawing title, "revision": latest revision letter or number, "discipline": one of Architectural | Structural | Civil | Mechanical | Electrical | Hydraulic | Fire | Landscape, or empty}`,
+    shape: (r) => ({
+      number: str(r.number, 60),
+      title: str(r.title, 160),
+      revision: str(r.revision, 10),
+      discipline: str(r.discipline, 40),
+    }),
+  },
+
   scanNotes: {
     system: `${BASE}
 

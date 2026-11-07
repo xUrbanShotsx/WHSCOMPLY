@@ -14,7 +14,9 @@ export type AiTask =
   | "scan"
   | "template"
   | "beautify"
-  | "scanNotes";
+  | "scanNotes"
+  | "defect"
+  | "drawing";
 
 export type IncidentDraft = {
   title: string;
@@ -115,3 +117,19 @@ export type Proposal =
       controls: string;
       project: string;
     };
+
+export type DefectDraft = {
+  title: string;
+  description: string;
+  location: string;
+  priority: string;
+  assignee: string;
+  days: number;
+};
+
+export type DrawingRead = {
+  number: string;
+  title: string;
+  revision: string;
+  discipline: string;
+};

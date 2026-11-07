@@ -67,6 +67,12 @@ export function useAiContext() {
         incidents: s.incidentsIn,
         actions: s.actionsIn,
         audit: s.auditIn,
+        defects: s.defectsIn,
+        rfis: s.rfisIn,
+        tasks: s.tasksIn,
+        diaries: s.diariesIn,
+        notices: s.noticesIn,
+        drawings: s.drawingsIn,
       }),
     [s],
   );

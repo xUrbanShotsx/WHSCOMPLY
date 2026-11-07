@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
 import { ChemicalForm, DateModal } from "@/components/app/forms2";
+import { AttachField } from "@/components/app/Attachments";
 import {
   btnDark,
   btnLight,
@@ -103,6 +104,15 @@ export default function ChemicalsPage() {
                     </div>
                   </div>
                   <p className="mt-2 text-sm text-ink-soft">{c.controls}</p>
+                  <div className="mt-3">
+                    <AttachField
+                      files={c.files ?? []}
+                      onChange={(files) => s.updateChemical(c.id, { files })}
+                      label="Attach the SDS"
+                      accept="image/*,.pdf"
+                      disabled={c.status === "Removed"}
+                    />
+                  </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {c.status === "In use" && (
                       <>

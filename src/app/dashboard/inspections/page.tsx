@@ -17,7 +17,9 @@ import {
   Pill,
   Progress,
 } from "@/components/app/ui";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, todayISO } from "@/lib/format";
+import { CardHead, field } from "@/components/app/ui";
+import { addDays, daysUntil, INSPECTION_TEMPLATES } from "@/lib/data";
 
 const FILTERS = ["All", "In progress", "Complete"] as const;
 
@@ -122,6 +124,148 @@ export default function InspectionsPage() {
           onStarted={(id) => router.push(`/dashboard/inspections/${id}`)}
         />
       )}
+      <Card className="mt-6">
+        <CardHead
+          title="Inspection schedule"
+          sub="Routine checks that must happen on a rhythm. Overdue ones appear in your needs-attention list."
+        />
+        {s.schedulesIn.length === 0 ? (
+          <EmptyState
+            title="Nothing scheduled."
+            body="Add a daily site walk or a weekly scaffold check below."
+          />
+        ) : (
+          <ul>
+            {s.schedulesIn.map((sc) => {
+              const last = s.inspections
+                .filter(
+                  (i) => i.projectId === sc.projectId && i.kind === sc.kind,
+                )
+                .map((i) => i.date)
+                .sort()
+                .pop();
+              const next = last ? addDays(sc.everyDays, last) : todayISO();
+              const n = daysUntil(next);
+              return (
+                <li
+                  key={sc.id}
+                  className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-3 first:border-t-0"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">
+                      {sc.kind}
+                    </span>
+                    <span className="block truncate text-xs text-ink-soft">
+                      {s.projects.find((p) => p.id === sc.projectId)?.name} ·
+                      every{" "}
+                      {sc.everyDays === 1
+                        ? "day"
+                        : sc.everyDays === 7
+                          ? "week"
+                          : `${sc.everyDays} days`}{" "}
+                      · last {last ? fmtDate(last) : "never"}
+                    </span>
+                  </span>
+                  <Pill tone={n < 0 ? "owed" : n === 0 ? "owed" : "ok"}>
+                    {n < 0
+                      ? `Overdue ${-n}d`
+                      : n === 0
+                        ? "Due today"
+                        : `Next ${fmtDate(next)}`}
+                  </Pill>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/inspections/${s.startInspection(sc.projectId, sc.kind, "Sam Kowalski")}`,
+                      )
+                    }
+                    className={`${btnDark} !px-3 !py-1.5 text-xs`}
+                  >
+                    Start now
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${sc.kind} schedule`}
+                    onClick={() => s.remove("schedules", sc.id)}
+                    className="text-ink-soft hover:text-ink"
+                  >
+                    <Icon name="close" className="h-4 w-4" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const projectId = String(f.get("projectId"));
+            s.add(
+              "schedules",
+              {
+                projectId,
+                kind: String(f.get("kind")),
+                everyDays: Number(f.get("every")),
+              },
+              {
+                area: "Inspections",
+                projectId,
+                act: `scheduled a ${String(f.get("kind")).toLowerCase()}`,
+                to: `Every ${f.get("every")} days`,
+              },
+            );
+            e.currentTarget.reset();
+          }}
+          className="flex flex-wrap items-end gap-3 border-t border-line bg-bg px-5 py-4"
+        >
+          <label className="text-xs font-semibold text-ink-soft">
+            Project
+            <select
+              name="projectId"
+              required
+              defaultValue={s.all ? "" : s.scopeId}
+              className={`${field} !mt-1`}
+            >
+              {s.all && (
+                <option value="" disabled>
+                  Choose
+                </option>
+              )}
+              {s.projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-ink-soft">
+            Checklist
+            <select name="kind" className={`${field} !mt-1`}>
+              {[
+                ...Object.keys(INSPECTION_TEMPLATES),
+                ...s.customTemplates.map((t) => t.name),
+              ].map((k) => (
+                <option key={k}>{k}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-ink-soft">
+            How often
+            <select name="every" defaultValue="7" className={`${field} !mt-1`}>
+              <option value="1">Daily</option>
+              <option value="7">Weekly</option>
+              <option value="14">Fortnightly</option>
+              <option value="30">Monthly</option>
+            </select>
+          </label>
+          <button type="submit" className={btnDark}>
+            Add to schedule
+          </button>
+        </form>
+      </Card>
+
       {building && <TemplateModal onClose={() => setBuilding(false)} />}
     </>
   );

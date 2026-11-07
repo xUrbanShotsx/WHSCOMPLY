@@ -1,3 +1,4 @@
+import type { Attachment } from "./files";
 import { todayISO } from "./format";
 
 /* ---------- helpers ---------- */
@@ -47,6 +48,10 @@ export type Project = {
   hospital: string;
   emergencyContact: string;
   wardens: string;
+  /** levels and areas used to say where things are */
+  locations: string[];
+  /** what every worker is shown and acknowledges at the site induction */
+  inductionTopics: string[];
 };
 
 export type Ticket = {
@@ -68,7 +73,12 @@ export type Worker = {
   inducted: string[];
 };
 
-export type SubDoc = { id: string; kind: string; expires: string | null };
+export type SubDoc = {
+  id: string;
+  kind: string;
+  expires: string | null;
+  files?: Attachment[];
+};
 
 export type Subcontractor = {
   id: string;
@@ -79,6 +89,8 @@ export type Subcontractor = {
   projects: string[];
   approved: boolean;
   docs: SubDoc[];
+  /** prequalification checks to pass before approval */
+  prequal?: { id: string; text: string; done: boolean }[];
 };
 
 export type RiskLevel = "Low" | "Medium" | "High" | "Extreme";
@@ -148,7 +160,13 @@ export type Inspection = {
   kind: string;
   date: string;
   inspector: string;
-  items: { id: string; text: string; result: InspResult; note: string }[];
+  items: {
+    id: string;
+    text: string;
+    result: InspResult;
+    note: string;
+    files?: Attachment[];
+  }[];
   status: "In progress" | "Complete";
 };
 
@@ -188,6 +206,7 @@ export type Incident = {
   cause: string;
   /** an injury that kept someone off work, for the injury frequency rate */
   lostTime?: boolean;
+  files?: Attachment[];
 };
 
 export type Action = {
@@ -216,6 +235,13 @@ export type AuditArea =
   | "Visitors"
   | "Consultation"
   | "Documents"
+  | "Diary"
+  | "Inductions"
+  | "Defects"
+  | "RFIs"
+  | "Programme"
+  | "Notices"
+  | "Drawings"
   | "Settings";
 
 export type AuditEvent = {
@@ -362,6 +388,8 @@ export type Chemical = {
   sdsDate: string | null;
   controls: string;
   status: "In use" | "Removed";
+  /** the safety data sheet itself */
+  files?: Attachment[];
 };
 
 export type Drill = {
@@ -397,6 +425,7 @@ export type Doc = {
   updated: string;
   reviewDue: string;
   signed: string[];
+  files?: Attachment[];
 };
 
 export const me = {
@@ -537,6 +566,28 @@ export const TALK_TOPICS = [
 
 const T = todayISO();
 
+export const INDUCTION_TOPICS = [
+  "Site rules, working hours and the exclusion zones",
+  "Emergency procedures, assembly point and first aid",
+  "How to report an incident, near miss or hazard",
+  "PPE required on this site and where to get it",
+  "Plant and traffic management, pedestrian separation",
+  "Working at heights and edge protection requirements",
+  "Hazardous chemicals and where the SDS are kept",
+  "Your right and duty to stop unsafe work",
+];
+
+export const PREQUAL_ITEMS = [
+  "Current public liability insurance sighted",
+  "Workers' compensation certificate sighted",
+  "Contractor licence verified with the regulator",
+  "WHS policy and safety management system received",
+  "Sample SWMS for their main work reviewed",
+  "Injury statistics for the last 3 years supplied",
+  "Drug and alcohol policy received",
+  "Referees or past project safety record checked",
+];
+
 export const seedProjects: Project[] = [
   {
     id: "p-marsh",
@@ -553,6 +604,18 @@ export const seedProjects: Project[] = [
     hospital: "Royal Prince Alfred Hospital, Missenden Rd, Camperdown",
     emergencyContact: "Sam Kowalski 0412 555 010",
     wardens: "Ryan Dunn, Tran Nguyen",
+    locations: [
+      "Basement",
+      "Ground floor",
+      "Level 1",
+      "Level 2",
+      "Level 3",
+      "Level 4",
+      "Roof",
+      "Street frontage",
+      "Laydown area",
+    ],
+    inductionTopics: INDUCTION_TOPICS,
   },
   {
     id: "p-quarry",
@@ -569,6 +632,15 @@ export const seedProjects: Project[] = [
     hospital: "Canterbury Hospital, Canterbury Rd, Campsie",
     emergencyContact: "Dana Whitfield 0412 555 020",
     wardens: "Ana Reyes, Tom Becker",
+    locations: [
+      "Stage 1",
+      "Stage 2",
+      "Plant room",
+      "Rear yard",
+      "Site office",
+      "Car park",
+    ],
+    inductionTopics: INDUCTION_TOPICS,
   },
   {
     id: "p-harbour",
@@ -585,6 +657,14 @@ export const seedProjects: Project[] = [
     hospital: "Sydney Hospital, Macquarie St, Sydney",
     emergencyContact: "Sam Kowalski 0412 555 010",
     wardens: "To be assigned",
+    locations: [
+      "Level 2 office floor",
+      "Ceiling space",
+      "Lobby",
+      "Loading dock",
+      "Lift core",
+    ],
+    inductionTopics: INDUCTION_TOPICS,
   },
 ];
 
@@ -1701,4 +1781,547 @@ export const HAZARD_CLASSES = [
   "Oxidiser",
   "Asbestos-containing material",
   "Other",
+];
+
+/* ---------- diary, inductions, defects, RFIs, programme, notices, drawings, schedules ---------- */
+
+export type Weather = "Fine" | "Overcast" | "Rain" | "Storm" | "Hot" | "Windy";
+export const WEATHER: Weather[] = [
+  "Fine",
+  "Overcast",
+  "Rain",
+  "Storm",
+  "Hot",
+  "Windy",
+];
+
+export type DiaryEntry = {
+  id: string;
+  projectId: string;
+  date: string;
+  weather: Weather;
+  temp: number | null;
+  summary: string;
+  workDone: string;
+  delays: string;
+  safety: string;
+  /** who was signed on that day, captured when the entry was written */
+  workers: string[];
+  author: string;
+  files: Attachment[];
+};
+
+export type InductionRecord = {
+  id: string;
+  projectId: string;
+  workerId: string;
+  date: string;
+  by: string;
+  topics: number;
+  signedAs: string;
+};
+
+export type DefectPriority = "Low" | "Medium" | "High" | "Critical";
+export type DefectStatus =
+  "Open" | "In progress" | "Ready to inspect" | "Closed";
+export const DEFECT_FLOW: DefectStatus[] = [
+  "Open",
+  "In progress",
+  "Ready to inspect",
+  "Closed",
+];
+
+export type Defect = {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  location: string;
+  priority: DefectPriority;
+  assignee: string;
+  due: string;
+  raised: string;
+  raisedBy: string;
+  status: DefectStatus;
+  files: Attachment[];
+};
+
+export type Rfi = {
+  id: string;
+  projectId: string;
+  number: string;
+  subject: string;
+  question: string;
+  raisedBy: string;
+  to: string;
+  due: string;
+  status: "Open" | "Answered" | "Closed";
+  answer: string;
+};
+
+export type ProgTask = {
+  id: string;
+  projectId: string;
+  name: string;
+  trade: string;
+  start: string;
+  end: string;
+  progress: number;
+  /** a high risk task that needs a signed SWMS before it starts */
+  needsSwms: boolean;
+};
+
+export type Notice = {
+  id: string;
+  /** "all" for the whole business */
+  projectId: string;
+  title: string;
+  body: string;
+  priority: "Info" | "Important" | "Safety alert";
+  author: string;
+  date: string;
+  pinned: boolean;
+  readBy: string[];
+};
+
+export type DrawingRev = {
+  rev: string;
+  date: string;
+  note: string;
+  file?: Attachment;
+};
+
+export type Drawing = {
+  id: string;
+  projectId: string;
+  number: string;
+  title: string;
+  discipline: string;
+  /** newest first */
+  revisions: DrawingRev[];
+};
+
+export type InspectionSchedule = {
+  id: string;
+  projectId: string;
+  kind: string;
+  everyDays: number;
+};
+
+export const DISCIPLINES = [
+  "Architectural",
+  "Structural",
+  "Civil",
+  "Mechanical",
+  "Electrical",
+  "Hydraulic",
+  "Fire",
+  "Landscape",
+];
+export const TRADES = [
+  "Demolition",
+  "Excavation",
+  "Formwork",
+  "Concrete",
+  "Steel",
+  "Scaffold",
+  "Carpentry",
+  "Electrical",
+  "Plumbing",
+  "Mechanical",
+  "Roofing",
+  "Waterproofing",
+  "Fit-out",
+  "Painting",
+  "Landscaping",
+];
+
+export const seedDiaries: DiaryEntry[] = [
+  {
+    id: "dy1",
+    projectId: "p-marsh",
+    date: addDays(-1),
+    weather: "Overcast",
+    temp: 21,
+    summary:
+      "Level 3 slab reinforcement complete and inspected. Concrete pour booked for Thursday.",
+    workDone:
+      "Reo fixing finished on Level 3. Formwork stripped on Level 2 north bay. Scaffold alteration started on the east elevation.",
+    delays:
+      "Concrete pump was out of service for two hours with a hydraulic leak.",
+    safety:
+      "Toolbox talk on working at heights held at 6:45am. Scaffold inspected and one ladder lashing retied.",
+    workers: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva"],
+    author: "Ryan Dunn",
+    files: [],
+  },
+  {
+    id: "dy2",
+    projectId: "p-marsh",
+    date: addDays(-2),
+    weather: "Rain",
+    temp: 17,
+    summary: "Wet morning, external work paused until 10am.",
+    workDone:
+      "Internal reo cutting and bending. Material deliveries received and stored under cover.",
+    delays: "Rain delayed external works by 3 hours.",
+    safety: "Slip hazards on the laydown area managed with extra gravel.",
+    workers: ["w-dunn", "w-nguyen", "w-kim", "w-silva"],
+    author: "Ryan Dunn",
+    files: [],
+  },
+  {
+    id: "dy3",
+    projectId: "p-quarry",
+    date: addDays(-1),
+    weather: "Fine",
+    temp: 24,
+    summary: "Stormwater trench backfilled and compacted.",
+    workDone:
+      "Trench B to D inspected, pipe laid and bedded, backfilled in layers.",
+    delays: "",
+    safety: "Excavation permit closed out. No incidents.",
+    workers: ["w-becker", "w-reyes"],
+    author: "Dana Whitfield",
+    files: [],
+  },
+];
+
+export const seedInductions: InductionRecord[] = [
+  {
+    id: "ind1",
+    projectId: "p-marsh",
+    workerId: "w-dunn",
+    date: addDays(-110),
+    by: "Sam Kowalski",
+    topics: 8,
+    signedAs: "Ryan Dunn",
+  },
+  {
+    id: "ind2",
+    projectId: "p-marsh",
+    workerId: "w-nguyen",
+    date: addDays(-100),
+    by: "Sam Kowalski",
+    topics: 8,
+    signedAs: "Tran Nguyen",
+  },
+  {
+    id: "ind3",
+    projectId: "p-marsh",
+    workerId: "w-okafor",
+    date: addDays(-60),
+    by: "Ryan Dunn",
+    topics: 8,
+    signedAs: "Michael Okafor",
+  },
+  {
+    id: "ind4",
+    projectId: "p-marsh",
+    workerId: "w-kim",
+    date: addDays(-45),
+    by: "Ryan Dunn",
+    topics: 8,
+    signedAs: "Jae Kim",
+  },
+  {
+    id: "ind5",
+    projectId: "p-marsh",
+    workerId: "w-silva",
+    date: addDays(-30),
+    by: "Ryan Dunn",
+    topics: 8,
+    signedAs: "Carlos Silva",
+  },
+  {
+    id: "ind6",
+    projectId: "p-quarry",
+    workerId: "w-becker",
+    date: addDays(-150),
+    by: "Dana Whitfield",
+    topics: 8,
+    signedAs: "Tom Becker",
+  },
+  {
+    id: "ind7",
+    projectId: "p-quarry",
+    workerId: "w-reyes",
+    date: addDays(-200),
+    by: "Dana Whitfield",
+    topics: 8,
+    signedAs: "Ana Reyes",
+  },
+];
+
+export const seedDefects: Defect[] = [
+  {
+    id: "df1",
+    projectId: "p-marsh",
+    title: "Honeycombing on Level 2 column C4",
+    description:
+      "Voids visible at the base of the column after stripping. Needs engineer inspection before patching.",
+    location: "Level 2, column C4",
+    priority: "High",
+    assignee: "Ridgeline Concrete",
+    due: addDays(4),
+    raised: addDays(-3),
+    raisedBy: "Ryan Dunn",
+    status: "In progress",
+    files: [],
+  },
+  {
+    id: "df2",
+    projectId: "p-marsh",
+    title: "Edge protection gap at stair void",
+    description:
+      "Missing mid-rail on the temporary barrier at the Level 3 stair void.",
+    location: "Level 3, stair core",
+    priority: "Critical",
+    assignee: "Apex Scaffolding",
+    due: addDays(0),
+    raised: addDays(0),
+    raisedBy: "Sam Kowalski",
+    status: "Open",
+    files: [],
+  },
+  {
+    id: "df3",
+    projectId: "p-quarry",
+    title: "Pipe bedding below spec at grid D",
+    description: "Bedding sand depth under the specified 100 mm.",
+    location: "Rear yard, grid D",
+    priority: "Medium",
+    assignee: "Dana Whitfield",
+    due: addDays(-2),
+    raised: addDays(-9),
+    raisedBy: "Ana Reyes",
+    status: "Ready to inspect",
+    files: [],
+  },
+];
+
+export const seedRfis: Rfi[] = [
+  {
+    id: "rf1",
+    projectId: "p-marsh",
+    number: "RFI-014",
+    subject: "Slab edge detail at stair void",
+    question:
+      "Drawing S-203 does not show the upstand height at the Level 3 stair void. Please confirm so edge protection can be designed.",
+    raisedBy: "Sam Kowalski",
+    to: "Structural engineer",
+    due: addDays(2),
+    status: "Open",
+    answer: "",
+  },
+  {
+    id: "rf2",
+    projectId: "p-marsh",
+    number: "RFI-013",
+    subject: "Crane exclusion zone over adjoining lot",
+    question:
+      "Can the neighbour's rooftop be treated as part of the crane exclusion zone, and who approves access?",
+    raisedBy: "Ryan Dunn",
+    to: "Client",
+    due: addDays(-4),
+    status: "Answered",
+    answer:
+      "Access approved in writing for crane operation hours only. Letter attached to the project file.",
+  },
+  {
+    id: "rf3",
+    projectId: "p-quarry",
+    number: "RFI-006",
+    subject: "Stormwater pit depth at B3",
+    question:
+      "Survey shows a clash with the existing sewer. Confirm the revised pit invert level.",
+    raisedBy: "Dana Whitfield",
+    to: "Civil engineer",
+    due: addDays(5),
+    status: "Open",
+    answer: "",
+  },
+];
+
+export const seedTasks: ProgTask[] = [
+  {
+    id: "pt1",
+    projectId: "p-marsh",
+    name: "Level 3 slab reinforcement",
+    trade: "Concrete",
+    start: addDays(-12),
+    end: addDays(-1),
+    progress: 100,
+    needsSwms: true,
+  },
+  {
+    id: "pt2",
+    projectId: "p-marsh",
+    name: "Level 3 slab pour",
+    trade: "Concrete",
+    start: addDays(0),
+    end: addDays(2),
+    progress: 20,
+    needsSwms: true,
+  },
+  {
+    id: "pt3",
+    projectId: "p-marsh",
+    name: "Scaffold alteration, east elevation",
+    trade: "Scaffold",
+    start: addDays(-2),
+    end: addDays(3),
+    progress: 40,
+    needsSwms: true,
+  },
+  {
+    id: "pt4",
+    projectId: "p-marsh",
+    name: "Level 4 formwork",
+    trade: "Formwork",
+    start: addDays(4),
+    end: addDays(14),
+    progress: 0,
+    needsSwms: true,
+  },
+  {
+    id: "pt5",
+    projectId: "p-marsh",
+    name: "Services rough-in, Level 1",
+    trade: "Electrical",
+    start: addDays(-5),
+    end: addDays(9),
+    progress: 55,
+    needsSwms: false,
+  },
+  {
+    id: "pt6",
+    projectId: "p-quarry",
+    name: "Stormwater trenching",
+    trade: "Excavation",
+    start: addDays(-20),
+    end: addDays(-1),
+    progress: 100,
+    needsSwms: true,
+  },
+  {
+    id: "pt7",
+    projectId: "p-quarry",
+    name: "Stage 2 services rough-in",
+    trade: "Electrical",
+    start: addDays(-10),
+    end: addDays(18),
+    progress: 45,
+    needsSwms: false,
+  },
+  {
+    id: "pt8",
+    projectId: "p-harbour",
+    name: "Asbestos survey and clearance",
+    trade: "Demolition",
+    start: addDays(0),
+    end: addDays(4),
+    progress: 0,
+    needsSwms: true,
+  },
+  {
+    id: "pt9",
+    projectId: "p-harbour",
+    name: "Strip-out of ceilings and partitions",
+    trade: "Demolition",
+    start: addDays(5),
+    end: addDays(16),
+    progress: 0,
+    needsSwms: true,
+  },
+];
+
+export const seedNotices: Notice[] = [
+  {
+    id: "nt1",
+    projectId: "p-marsh",
+    title: "Crane lift tomorrow, Level 4 formwork tables",
+    body: "Street frontage closed from 6:30am to 11am. All deliveries rescheduled. Hard hats and hi-vis at the gate as usual. Dogman and spotter briefing at 6:15am.",
+    priority: "Safety alert",
+    author: "Sam Kowalski",
+    date: addDays(0),
+    pinned: true,
+    readBy: ["w-dunn", "w-nguyen"],
+  },
+  {
+    id: "nt2",
+    projectId: "all",
+    title: "Heat stress during the hot spell",
+    body: "Water and shade at each level. Rotate heavy tasks, take breaks in the shade and tell your foreman if you feel unwell.",
+    priority: "Important",
+    author: "Dana Whitfield",
+    date: addDays(-2),
+    pinned: false,
+    readBy: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva", "w-becker"],
+  },
+  {
+    id: "nt3",
+    projectId: "p-quarry",
+    title: "Muster point has moved",
+    body: "The new muster point is the north-east corner of the car park. Update your emergency card.",
+    priority: "Info",
+    author: "Dana Whitfield",
+    date: addDays(-14),
+    pinned: false,
+    readBy: ["w-becker", "w-reyes"],
+  },
+];
+
+export const seedDrawings: Drawing[] = [
+  {
+    id: "dw1",
+    projectId: "p-marsh",
+    number: "S-203",
+    title: "Level 3 slab reinforcement",
+    discipline: "Structural",
+    revisions: [
+      { rev: "C", date: addDays(-14), note: "Stair void edge detail added" },
+      { rev: "B", date: addDays(-40), note: "Revised for column grid change" },
+      { rev: "A", date: addDays(-70), note: "Issued for construction" },
+    ],
+  },
+  {
+    id: "dw2",
+    projectId: "p-marsh",
+    number: "A-110",
+    title: "Level 3 floor plan",
+    discipline: "Architectural",
+    revisions: [
+      { rev: "B", date: addDays(-30), note: "Door schedule updated" },
+      { rev: "A", date: addDays(-80), note: "Issued for construction" },
+    ],
+  },
+  {
+    id: "dw3",
+    projectId: "p-quarry",
+    number: "C-301",
+    title: "Stormwater layout",
+    discipline: "Civil",
+    revisions: [
+      { rev: "D", date: addDays(-9), note: "Pit B3 invert revised" },
+      { rev: "C", date: addDays(-60), note: "Issued for construction" },
+    ],
+  },
+];
+
+export const seedSchedules: InspectionSchedule[] = [
+  { id: "sc1", projectId: "p-marsh", kind: "Daily site walk", everyDays: 1 },
+  {
+    id: "sc2",
+    projectId: "p-marsh",
+    kind: "Scaffold inspection",
+    everyDays: 7,
+  },
+  { id: "sc3", projectId: "p-quarry", kind: "Daily site walk", everyDays: 1 },
+  {
+    id: "sc4",
+    projectId: "p-quarry",
+    kind: "Electrical and leads",
+    everyDays: 7,
+  },
 ];

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
 import { DocumentForm } from "@/components/app/forms2";
+import { AttachField } from "@/components/app/Attachments";
 import {
   Avatar,
   btnDark,
@@ -146,6 +147,16 @@ export default function DocumentsPage() {
                         >
                           Issue new version
                         </button>
+                      </div>
+                      <div className="mb-3">
+                        <AttachField
+                          files={d.files ?? []}
+                          onChange={(files) =>
+                            s.updateDocument(d.id, { files })
+                          }
+                          label="Attach the document"
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                        />
                       </div>
                       <ul className="grid gap-2 sm:grid-cols-2">
                         {readers.map((w, i) => {

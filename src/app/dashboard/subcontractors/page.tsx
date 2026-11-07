@@ -12,7 +12,13 @@ import {
   PageHeading,
   Pill,
 } from "@/components/app/ui";
-import { daysUntil, expiryOf, type Subcontractor } from "@/lib/data";
+import {
+  PREQUAL_ITEMS,
+  daysUntil,
+  expiryOf,
+  type Subcontractor,
+} from "@/lib/data";
+import { AttachField } from "@/components/app/Attachments";
 import { fmtDate } from "@/lib/format";
 
 export default function SubsPage() {
@@ -46,6 +52,15 @@ export default function SubsPage() {
               (d) => expiryOf(d.expires, 0) === "expired",
             );
             const crew = s.workers.filter((w) => w.company === x.id).length;
+            const prequal =
+              x.prequal ??
+              PREQUAL_ITEMS.map((text, n) => ({
+                id: `q${n}`,
+                text,
+                done: x.approved,
+              }));
+            const prequalDone = prequal.filter((q) => q.done).length;
+            const ready = prequalDone === prequal.length;
             return (
               <Card key={x.id}>
                 <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
@@ -89,6 +104,11 @@ export default function SubsPage() {
                               : "No expiry"}
                           </span>
                         </span>
+                        <AttachField
+                          files={d.files ?? []}
+                          onChange={(files) => s.setDocFiles(x.id, d.id, files)}
+                          label="Certificate"
+                        />
                         <Pill
                           tone={
                             e === "expired"
@@ -116,6 +136,36 @@ export default function SubsPage() {
                     );
                   })}
                 </ul>
+                <details className="group border-t border-line">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm font-semibold">
+                    Prequalification
+                    <span className="flex items-center gap-2">
+                      <Pill tone={ready ? "ok" : "owed"}>
+                        {prequalDone} of {prequal.length} checked
+                      </Pill>
+                      <span className="font-mono text-lg transition-transform group-open:rotate-45">
+                        +
+                      </span>
+                    </span>
+                  </summary>
+                  <ul className="space-y-1.5 px-5 pb-4">
+                    {prequal.map((q) => (
+                      <li key={q.id}>
+                        <label className="flex cursor-pointer items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={q.done}
+                            onChange={(e) =>
+                              s.setPrequal(x.id, q.id, e.target.checked)
+                            }
+                            className="mt-1 accent-[var(--ink)]"
+                          />
+                          {q.text}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-bg px-5 py-3">
                   <button
                     type="button"
@@ -126,11 +176,13 @@ export default function SubsPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={!x.approved && lapsed}
+                    disabled={!x.approved && (lapsed || !ready)}
                     title={
                       !x.approved && lapsed
                         ? "Renew the lapsed documents first"
-                        : ""
+                        : !x.approved && !ready
+                          ? "Complete the prequalification checks first"
+                          : ""
                     }
                     onClick={() => s.setApproved(x.id, !x.approved)}
                     className="text-xs font-semibold underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-40"

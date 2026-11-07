@@ -4,6 +4,10 @@ import {
   expiryOf,
   type Action,
   type Chemical,
+  type Defect,
+  type Inspection,
+  type InspectionSchedule,
+  type Rfi,
   type Doc,
   type Drill,
   type Permit,
@@ -32,7 +36,10 @@ export type Attention = {
     | "chemical"
     | "drill"
     | "doc"
-    | "visitor";
+    | "visitor"
+    | "defect"
+    | "rfi"
+    | "inspection";
   title: string;
   where: string;
   due: string;
@@ -65,6 +72,10 @@ type Input = {
   drills: Drill[];
   docs: Doc[];
   visitors: Visitor[];
+  defects: Defect[];
+  rfis: Rfi[];
+  schedules: InspectionSchedule[];
+  inspections: Inspection[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -377,6 +388,64 @@ export function attentionFor(i: Input): Attention[] {
       rank: -1,
       who: ini(v.name),
       projectId: v.projectId,
+    });
+  }
+
+  for (const d of i.defects) {
+    if (d.status === "Closed") continue;
+    const n = daysUntil(d.due);
+    if (d.priority !== "Critical" && n > 3) continue;
+    out.push({
+      id: `df-${d.id}`,
+      kind: "defect",
+      title: `${d.priority === "Critical" ? "Critical defect" : "Defect"}: ${d.title}`,
+      where: `${d.location} · ${d.assignee}`,
+      due: dueText(n),
+      href: "/dashboard/defects",
+      tone: d.priority === "Critical" || n < 0 ? "owed" : "neutral",
+      rank: d.priority === "Critical" ? -3 : n,
+      who: ini(d.assignee || "Defect"),
+      projectId: d.projectId,
+    });
+  }
+
+  for (const r of i.rfis) {
+    if (r.status !== "Open") continue;
+    const n = daysUntil(r.due);
+    if (n > 2) continue;
+    out.push({
+      id: `rf-${r.id}`,
+      kind: "rfi",
+      title: `${r.number} unanswered: ${r.subject}`,
+      where: `To ${r.to} · ${i.projectName(r.projectId)}`,
+      due: dueText(n),
+      href: "/dashboard/rfis",
+      tone: n < 0 ? "owed" : "neutral",
+      rank: n,
+      who: ini(r.raisedBy),
+      projectId: r.projectId,
+    });
+  }
+
+  for (const sc of i.schedules) {
+    const last = i.inspections
+      .filter((x) => x.projectId === sc.projectId && x.kind === sc.kind)
+      .map((x) => x.date)
+      .sort()
+      .pop();
+    const n = last ? daysUntil(last) + sc.everyDays : 0;
+    if (n > 0) continue;
+    out.push({
+      id: `sc-${sc.id}`,
+      kind: "inspection",
+      title: `${sc.kind} due`,
+      where: i.projectName(sc.projectId),
+      due: n === 0 ? "Due today" : `Overdue ${-n} day${n === -1 ? "" : "s"}`,
+      href: "/dashboard/inspections",
+      tone: "owed",
+      rank: n - 1,
+      who: ini(sc.kind),
+      projectId: sc.projectId,
     });
   }
 

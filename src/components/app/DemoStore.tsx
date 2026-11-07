@@ -9,11 +9,21 @@ import {
 } from "react";
 import {
   INCIDENT_FLOW,
+  INDUCTION_TOPICS,
+  PREQUAL_ITEMS,
   INSPECTION_TEMPLATES,
   PERMIT_CHECKS,
   initialsOf,
   me,
   seedActions,
+  seedDefects,
+  seedDiaries,
+  seedDrawings,
+  seedInductions,
+  seedNotices,
+  seedRfis,
+  seedSchedules,
+  seedTasks,
   seedChemicals,
   seedDocs,
   seedDrills,
@@ -32,6 +42,14 @@ import {
   seedTalks,
   seedWorkers,
   type Action,
+  type Defect,
+  type DiaryEntry,
+  type Drawing,
+  type InductionRecord,
+  type InspectionSchedule,
+  type Notice,
+  type ProgTask,
+  type Rfi,
   type Chemical,
   type Doc,
   type Drill,
@@ -57,9 +75,10 @@ import {
   type Ticket,
   type Worker,
 } from "@/lib/data";
+import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
 
-const KEY = "whscomply-demo-v4";
+const KEY = "whscomply-demo-v5";
 
 export const ALL = "all";
 
@@ -86,6 +105,14 @@ type Saved = {
   docs: Doc[];
   /** checklists built by the user or the AI, offered alongside the standard inspection checklists */
   customTemplates: { id: string; name: string; items: string[] }[];
+  diaries: DiaryEntry[];
+  inductions: InductionRecord[];
+  defects: Defect[];
+  rfis: Rfi[];
+  tasks: ProgTask[];
+  notices: Notice[];
+  drawings: Drawing[];
+  schedules: InspectionSchedule[];
 };
 
 const SEED: Saved = {
@@ -109,6 +136,14 @@ const SEED: Saved = {
   visitors: seedVisitors,
   docs: seedDocs,
   customTemplates: [],
+  diaries: seedDiaries,
+  inductions: seedInductions,
+  defects: seedDefects,
+  rfis: seedRfis,
+  tasks: seedTasks,
+  notices: seedNotices,
+  drawings: seedDrawings,
+  schedules: seedSchedules,
 };
 
 /* ---- a tiny external store over localStorage, so state survives navigation and reloads ---- */
@@ -139,7 +174,15 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.drills) &&
     Array.isArray(p.visitors) &&
     Array.isArray(p.docs) &&
-    Array.isArray(p.customTemplates)
+    Array.isArray(p.customTemplates) &&
+    Array.isArray(p.diaries) &&
+    Array.isArray(p.inductions) &&
+    Array.isArray(p.defects) &&
+    Array.isArray(p.rfis) &&
+    Array.isArray(p.tasks) &&
+    Array.isArray(p.notices) &&
+    Array.isArray(p.drawings) &&
+    Array.isArray(p.schedules)
   );
 }
 
@@ -352,6 +395,21 @@ type Store = Saved & {
 
   addDocument: (i: NewDoc) => void;
   addTemplate: (name: string, items: string[]) => void;
+
+  /** generic create, change and delete for the simple record lists */
+  add: <K extends Coll>(k: K, rec: Omit<Rec<K>, "id">, e: Note) => string;
+  patch: <K extends Coll>(
+    k: K,
+    id: string,
+    p: Partial<Rec<K>>,
+    e?: Note,
+  ) => void;
+  remove: <K extends Coll>(k: K, id: string, e?: Note) => void;
+  recordInduction: (i: Omit<InductionRecord, "id" | "date">) => void;
+  setPrequal: (sid: string, itemId: string, done: boolean) => void;
+  setItemFiles: (id: string, itemId: string, files: Attachment[]) => void;
+  setDocFiles: (sid: string, did: string, files: Attachment[]) => void;
+  updateDocument: (id: string, patch: Partial<Doc>) => void;
   removeTemplate: (id: string) => void;
   signDoc: (id: string, workerId: string) => void;
   reviewDoc: (id: string, version: string, reviewDue: string) => void;
@@ -389,6 +447,25 @@ type Store = Saved & {
   resetDemo: () => void;
 };
 
+type Coll =
+  | "diaries"
+  | "inductions"
+  | "defects"
+  | "rfis"
+  | "tasks"
+  | "notices"
+  | "drawings"
+  | "schedules";
+type Rec<K extends Coll> = Saved[K][number];
+/** the audit line written with a change to one of the simple record lists */
+type Note = {
+  area: AuditArea;
+  projectId: string;
+  act: string;
+  from?: string;
+  to: string;
+};
+
 const patchIn = <T extends { id: string }>(
   list: T[],
   id: string,
@@ -415,6 +492,8 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
             hospital: "",
             emergencyContact: "",
             wardens: "",
+            locations: [],
+            inductionTopics: INDUCTION_TOPICS,
           },
         ],
       }),
@@ -565,7 +644,20 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     act(
       (s) => ({
         ...s,
-        subs: [...s.subs, { ...i, id, approved: false, docs: [] }],
+        subs: [
+          ...s.subs,
+          {
+            ...i,
+            id,
+            approved: false,
+            docs: [],
+            prequal: PREQUAL_ITEMS.map((text, n) => ({
+              id: `q${n}`,
+              text,
+              done: false,
+            })),
+          },
+        ],
       }),
       ev(
         "People",
@@ -1338,6 +1430,97 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  add: (k, rec, e) => {
+    const id = `${k.slice(0, 2)}-${uid()}`;
+    act(
+      (s) => ({
+        ...s,
+        [k]: [{ ...rec, id }, ...(s[k] as { id: string }[])],
+      }),
+      ev(e.area, e.projectId, e.act, e.from ?? "Not on record", e.to),
+    );
+    return id;
+  },
+  patch: (k, id, p, e) => {
+    const apply = (s: Saved) => ({
+      ...s,
+      [k]: patchIn(s[k] as { id: string }[], id, (x) => ({ ...x, ...p })),
+    });
+    if (e)
+      act(apply, ev(e.area, e.projectId, e.act, e.from ?? "Previous", e.to));
+    else update(apply);
+  },
+  remove: (k, id, e) => {
+    const apply = (s: Saved) => ({
+      ...s,
+      [k]: (s[k] as { id: string }[]).filter((x) => x.id !== id),
+    });
+    if (e)
+      act(apply, ev(e.area, e.projectId, e.act, e.from ?? "On record", e.to));
+    else update(apply);
+  },
+  recordInduction: (i) => {
+    const s0 = current();
+    act(
+      (s) => ({
+        ...s,
+        inductions: [
+          { ...i, id: `ind-${uid()}`, date: todayISO() },
+          ...s.inductions,
+        ],
+        workers: patchIn(s.workers, i.workerId, (w) =>
+          w.inducted.includes(i.projectId)
+            ? w
+            : { ...w, inducted: [...w.inducted, i.projectId] },
+        ),
+      }),
+      ev(
+        "Inductions",
+        i.projectId,
+        `inducted ${workerName(s0, i.workerId)} to ${projectName(s0, i.projectId)}`,
+        "Not inducted",
+        `Signed as ${i.signedAs}`,
+      ),
+    );
+  },
+  setPrequal: (sid, itemId, done) =>
+    update((s) => ({
+      ...s,
+      subs: patchIn(s.subs, sid, (x) => {
+        const list =
+          x.prequal ??
+          PREQUAL_ITEMS.map((text, n) => ({
+            id: `q${n}`,
+            text,
+            done: x.approved,
+          }));
+        return {
+          ...x,
+          prequal: list.map((q) => (q.id === itemId ? { ...q, done } : q)),
+        };
+      }),
+    })),
+  setItemFiles: (id, itemId, files) =>
+    update((s) => ({
+      ...s,
+      inspections: patchIn(s.inspections, id, (x) => ({
+        ...x,
+        items: x.items.map((i) => (i.id === itemId ? { ...i, files } : i)),
+      })),
+    })),
+  setDocFiles: (sid, did, files) =>
+    update((s) => ({
+      ...s,
+      subs: patchIn(s.subs, sid, (x) => ({
+        ...x,
+        docs: x.docs.map((d) => (d.id === did ? { ...d, files } : d)),
+      })),
+    })),
+  updateDocument: (id, patch) =>
+    update((s) => ({
+      ...s,
+      docs: patchIn(s.docs, id, (d) => ({ ...d, ...patch })),
+    })),
   addTemplate: (name, items) =>
     act(
       (s) => ({
@@ -1421,7 +1604,10 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
-  resetDemo: () => writeSaved(SEED),
+  resetDemo: () => {
+    clearFiles().catch(() => {});
+    writeSaved(SEED);
+  },
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -1476,6 +1662,16 @@ export function useScope() {
       risksIn: inP(s.risks),
       talksIn: inP(s.talks),
       permitsIn: inP(s.permits),
+      diariesIn: inP(s.diaries),
+      inductionsIn: inP(s.inductions),
+      defectsIn: inP(s.defects),
+      rfisIn: inP(s.rfis),
+      tasksIn: inP(s.tasks),
+      drawingsIn: inP(s.drawings),
+      schedulesIn: inP(s.schedules),
+      noticesIn: all
+        ? s.notices
+        : s.notices.filter((x) => x.projectId === id || x.projectId === ALL),
       plantIn: inP(s.plant),
       chemicalsIn: inP(s.chemicals),
       drillsIn: inP(s.drills),

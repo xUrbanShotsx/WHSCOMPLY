@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Icon } from "@/components/Icons";
 import { useStore } from "@/components/app/DemoStore";
+import { AttachField } from "@/components/app/Attachments";
 import {
   btnDark,
   Card,
@@ -139,6 +140,16 @@ export default function InspectionDetail() {
                   ))}
                 </div>
               </div>
+              {(it.result === "fail" || (it.files?.length ?? 0) > 0) && (
+                <div className="mt-2">
+                  <AttachField
+                    files={it.files ?? []}
+                    onChange={(files) => s.setItemFiles(x.id, it.id, files)}
+                    disabled={locked}
+                    label="Add photo of the issue"
+                  />
+                </div>
+              )}
               {(it.result === "fail" || it.note) && (
                 <input
                   defaultValue={it.note}

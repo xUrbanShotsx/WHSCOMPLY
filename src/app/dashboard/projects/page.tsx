@@ -102,6 +102,55 @@ export default function ProjectsPage() {
                   </p>
                 )}
 
+                <div className="px-5 pt-4">
+                  <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-soft">
+                    Locations
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {p.locations.map((l) => (
+                      <span
+                        key={l}
+                        className="inline-flex items-center gap-1 rounded-full bg-tint px-2.5 py-1 text-xs font-medium"
+                      >
+                        {l}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${l}`}
+                          onClick={() =>
+                            s.updateProject(p.id, {
+                              locations: p.locations.filter((x) => x !== l),
+                            })
+                          }
+                          className="text-ink-soft hover:text-ink"
+                        >
+                          <Icon name="close" className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const f = e.currentTarget;
+                        const v = String(
+                          new FormData(f).get("loc") ?? "",
+                        ).trim();
+                        if (v && !p.locations.includes(v))
+                          s.updateProject(p.id, {
+                            locations: [...p.locations, v],
+                          });
+                        f.reset();
+                      }}
+                    >
+                      <input
+                        name="loc"
+                        aria-label={`Add a location to ${p.name}`}
+                        placeholder="Add level or area"
+                        className="w-32 rounded-full border border-dashed border-ink-soft/50 bg-transparent px-3 py-1 text-xs"
+                      />
+                    </form>
+                  </div>
+                </div>
+
                 <div className="px-5 pb-1 pt-4">
                   <p className="font-mono text-[11px] uppercase tracking-widest text-ink-soft">
                     Gate: sign workers on and off

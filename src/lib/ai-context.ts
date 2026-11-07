@@ -5,6 +5,12 @@ import {
   type Action,
   type AuditEvent,
   type Chemical,
+  type Defect,
+  type DiaryEntry,
+  type Drawing,
+  type Notice,
+  type ProgTask,
+  type Rfi,
   type Doc,
   type Drill,
   type Incident,
@@ -41,6 +47,12 @@ export type ContextInput = {
   actions: Action[];
   audit: AuditEvent[];
   allProjects: Project[];
+  defects: Defect[];
+  rfis: Rfi[];
+  tasks: ProgTask[];
+  diaries: DiaryEntry[];
+  notices: Notice[];
+  drawings: Drawing[];
 };
 
 /** A compact plain-text picture of the business, narrowed to the selected project, for the AI to read. */
@@ -169,6 +181,44 @@ export function buildContext(c: ContextInput): string {
   out.push("\nVISITORS ON SITE:");
   for (const v of c.visitors.filter((x) => !x.outAt))
     out.push(`- ${v.name}, ${v.company} (${name(v.projectId)}), in ${v.inAt}`);
+
+  out.push("\nDEFECTS:");
+  for (const d of c.defects)
+    out.push(
+      `- ${d.title} (${d.priority}, ${name(d.projectId)}, ${d.location}), ${d.status}, assigned ${d.assignee}, due ${due(d.due)}`,
+    );
+
+  out.push("\nRFIs:");
+  for (const r of c.rfis)
+    out.push(
+      `- ${r.number} ${r.subject} (${name(r.projectId)}), to ${r.to}, ${r.status}, due ${due(r.due)}`,
+    );
+
+  out.push("\nPROGRAMME:");
+  for (const t of c.tasks)
+    out.push(
+      `- ${t.name} (${t.trade}, ${name(t.projectId)}), ${t.start} to ${t.end}, ${t.progress}% done${t.needsSwms ? ", needs a SWMS" : ""}`,
+    );
+
+  out.push("\nDRAWINGS:");
+  for (const d of c.drawings)
+    out.push(
+      `- ${d.number} ${d.title} (${name(d.projectId)}), current revision ${d.revisions[0]?.rev}`,
+    );
+
+  out.push("\nSITE NOTICES:");
+  for (const n of c.notices.slice(0, 8))
+    out.push(
+      `- ${n.title} (${n.priority}, ${name(n.projectId)}), read by ${n.readBy.length}`,
+    );
+
+  out.push("\nSITE DIARY (latest):");
+  for (const d of [...c.diaries]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 6))
+    out.push(
+      `- ${d.date} ${name(d.projectId)}, ${d.weather}, ${d.workers.length} on site. ${d.summary}${d.delays ? ` Delays: ${d.delays}` : ""}${d.safety ? ` Safety: ${d.safety}` : ""}`,
+    );
 
   out.push("\nRECENT ACTIVITY:");
   for (const e of c.audit.slice(0, 15))

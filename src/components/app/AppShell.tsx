@@ -23,6 +23,18 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "Site management",
+    items: [
+      { href: "/dashboard/diary", label: "Site diary", icon: "book" },
+      { href: "/dashboard/programme", label: "Programme", icon: "calendar" },
+      { href: "/dashboard/drawings", label: "Drawings", icon: "file" },
+      { href: "/dashboard/rfis", label: "RFIs", icon: "list" },
+      { href: "/dashboard/defects", label: "Defects", icon: "pencil" },
+      { href: "/dashboard/photos", label: "Photos", icon: "clip" },
+      { href: "/dashboard/notices", label: "Site notices", icon: "bell" },
+    ],
+  },
+  {
     label: "Site safety",
     items: [
       { href: "/dashboard/swms", label: "SWMS", icon: "file" },
@@ -58,6 +70,7 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     label: "People",
     items: [
       { href: "/dashboard/people", label: "Workers and tickets", icon: "id" },
+      { href: "/dashboard/inductions", label: "Inductions", icon: "user" },
       { href: "/dashboard/training", label: "Training matrix", icon: "list" },
       {
         href: "/dashboard/subcontractors",
