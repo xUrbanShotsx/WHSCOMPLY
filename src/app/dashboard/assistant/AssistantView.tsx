@@ -358,14 +358,17 @@ export function AssistantView() {
           />
           <div className="min-w-0 flex-1">
             {empty && (
-              <div className="relative mb-3 max-w-md rounded-3xl rounded-bl-lg bg-ink px-5 py-3 text-bg shadow-lg">
-                <p className="font-display text-lg font-extrabold leading-snug">
-                  G&apos;day {first}. What are we sorting out today?
-                </p>
-                <p className="mt-1 text-sm text-bg/75">
-                  Ask about WHS, check what needs attention, or tell me what to
-                  log and I&apos;ll draft it.
-                </p>
+              <div className="mb-3 flex items-end gap-3">
+                <Mascot className="mascot-bob h-20 w-20 shrink-0 sm:hidden" />
+                <div className="relative max-w-md rounded-3xl rounded-bl-lg bg-ink px-5 py-3 text-bg shadow-lg">
+                  <p className="font-display text-lg font-extrabold leading-snug">
+                    G&apos;day {first}. What are we sorting out today?
+                  </p>
+                  <p className="mt-1 text-sm text-bg/75">
+                    Ask about WHS, check what needs attention, or tell me what
+                    to log and I&apos;ll draft it.
+                  </p>
+                </div>
               </div>
             )}
             <form
@@ -392,7 +395,7 @@ export function AssistantView() {
                       void send(input);
                     }
                   }}
-                  placeholder="Ask about WHS, your sites, or tell me what to log"
+                  placeholder="Ask, or tell me what to log"
                   className="max-h-44 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-ink-soft"
                 />
               </label>

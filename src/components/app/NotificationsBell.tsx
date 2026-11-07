@@ -50,7 +50,7 @@ export function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
+        <div className="fixed inset-x-4 top-[4.25rem] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem] overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
             <p className="font-display text-base font-extrabold">
               Needs action
@@ -68,7 +68,7 @@ export function NotificationsBell() {
               Nothing is due. You are up to date.
             </p>
           ) : (
-            <ul className="max-h-[26rem] divide-y divide-line overflow-y-auto">
+            <ul className="max-h-[min(26rem,60dvh)] divide-y divide-line overflow-y-auto">
               {items.slice(0, 12).map((a) => (
                 <li key={a.id}>
                   <Link

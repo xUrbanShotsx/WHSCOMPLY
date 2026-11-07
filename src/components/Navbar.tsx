@@ -47,6 +47,7 @@ export function Navbar() {
             href="/"
             onClick={() => setOpen(false)}
             aria-label="WHSCOMPLY home"
+            className="flex min-h-11 items-center"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

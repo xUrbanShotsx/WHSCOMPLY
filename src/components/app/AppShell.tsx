@@ -129,6 +129,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <p className="text-xs text-ink-soft">Demo workspace</p>
       </div>
 
+      <div className="mx-3 mt-3 shrink-0 md:hidden">
+        <GlobalSearch inline />
+      </div>
+
       <nav
         aria-label="App"
         data-lenis-prevent
@@ -137,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {GROUPS.map((g, gi) => (
           <div key={gi}>
             {g.label && (
-              <p className="px-3 pb-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-soft">
+              <p className="px-3 pb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-soft">
                 {g.label}
               </p>
             )}
@@ -254,7 +258,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="mx-auto max-w-6xl p-4 sm:p-8">{children}</div>
+        <div className="app-content mx-auto max-w-6xl p-4 sm:p-8">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -271,3 +271,49 @@ main .grid > * {
     animation: none;
   }
 }
+
+/* ---------- phones: comfortable touch targets, and no zoom when a field is focused ---------- */
+@media (max-width: 639px) {
+  /* iOS zooms into any field under 16px */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* the small action buttons and text links get a taller hit area without changing the layout */
+  [class*="!py-1.5"],
+  [class*="!py-1 "] {
+    min-height: 2.5rem;
+  }
+  button[aria-label^="Remove"],
+  button[aria-label^="Delete"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+  a[class*="underline"],
+  button[class*="underline"] {
+    padding-block: 0.6rem;
+    margin-block: -0.6rem;
+  }
+  summary {
+    min-height: 2.75rem;
+  }
+  footer a {
+    display: inline-block;
+    padding-block: 0.55rem;
+  }
+}
+
+/* on a phone, list text wraps instead of being cut off with an ellipsis */
+@media (max-width: 639px) {
+  .app-content .truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+}

@@ -55,8 +55,8 @@ export default function Pricing() {
           </>
         }
       >
-        Tell us how many sites you run and we will quote you. Hover a plan to
-        compare.
+        Tell us how many sites you run and we will quote you. Hover or tap a
+        plan to compare.
       </PageHeader>
 
       <ul

@@ -180,19 +180,26 @@ export default function DashboardHome() {
                 <li key={a.id} className="border-b border-line last:border-0">
                   <Link
                     href={a.href}
-                    className="row-hover flex items-center gap-3 px-5 py-3.5"
+                    className="row-hover flex items-start gap-3 px-4 py-3.5 sm:items-center sm:px-5"
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink-soft/60" />
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink-soft/60 sm:mt-0" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
+                      <span className="block text-sm font-semibold sm:truncate">
                         {a.title}
                       </span>
-                      <span className="block truncate text-xs text-ink-soft">
+                      <span className="block text-xs text-ink-soft sm:truncate">
                         {a.where}
                       </span>
+                      <span className="mt-1.5 inline-block sm:hidden">
+                        <Pill tone={a.tone}>{a.due}</Pill>
+                      </span>
                     </span>
-                    <Pill tone={a.tone}>{a.due}</Pill>
-                    <Avatar initials={a.who} tone={1} />
+                    <span className="hidden sm:block">
+                      <Pill tone={a.tone}>{a.due}</Pill>
+                    </span>
+                    <span className="hidden sm:block">
+                      <Avatar initials={a.who} tone={1} />
+                    </span>
                   </Link>
                 </li>
               ))}

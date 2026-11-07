@@ -48,7 +48,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-surface shadow-2xl sm:rounded-3xl ${
+        className={`relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-surface shadow-2xl sm:rounded-3xl ${
           wide ? "sm:max-w-2xl" : "sm:max-w-lg"
         }`}
       >

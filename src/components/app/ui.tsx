@@ -281,7 +281,7 @@ export function Chips<T extends string>({
           type="button"
           onClick={() => onChange(o)}
           aria-pressed={value === o}
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          className={`rounded-full px-3.5 py-2 text-xs font-semibold sm:px-3 sm:py-1 ${
             value === o
               ? "bg-ink text-bg"
               : "bg-tint text-ink-soft hover:text-ink"

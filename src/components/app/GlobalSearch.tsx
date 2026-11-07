@@ -8,7 +8,7 @@ import { useStore } from "./DemoStore";
 type Hit = { id: string; label: string; sub: string; href: string };
 
 /** Searches every record in the workspace, across all projects, by name or title. */
-export function GlobalSearch() {
+export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const s = useStore();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -149,7 +149,12 @@ export function GlobalSearch() {
   }, [q, s]);
 
   return (
-    <div ref={box} className="relative hidden max-w-sm flex-1 md:block">
+    <div
+      ref={box}
+      className={
+        inline ? "relative block" : "relative hidden max-w-sm flex-1 md:block"
+      }
+    >
       <label className="flex items-center gap-2 rounded-full bg-bg px-4 py-2 text-sm text-ink-soft focus-within:ring-2 focus-within:ring-accent">
         <Icon name="search" className="h-4 w-4" />
         <input
