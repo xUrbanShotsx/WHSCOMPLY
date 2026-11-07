@@ -228,60 +228,18 @@ export function AssistantView() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-11rem)] max-w-3xl flex-col">
-      <div className="mb-5 flex items-center gap-4 rounded-3xl border border-line bg-gradient-to-br from-accent/20 via-accent/[0.07] to-transparent p-4 sm:p-5">
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-line sm:h-20 sm:w-20">
-          <Mascot className="h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Assistant
-          </h1>
-          <p className="mt-0.5 text-sm text-ink-soft">
-            Your site safety offsider. Reading{" "}
-            <span className="font-semibold text-ink">
-              {s.all ? "every project" : s.scopeLabel}
-            </span>
-            .
-          </p>
-          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-            <span className="h-2 w-2 rounded-full bg-accent" /> Drafts changes.
-            You confirm.
-          </p>
-        </div>
-        {!empty && (
-          <button
-            type="button"
-            onClick={reset}
-            className={`${btnLight} shrink-0`}
-          >
-            <Icon name="plus" className="h-4 w-4" />{" "}
-            <span className="hidden sm:inline">New chat</span>
+      {!empty && (
+        <div className="mb-4 flex justify-end">
+          <button type="button" onClick={reset} className={btnLight}>
+            <Icon name="plus" className="h-4 w-4" /> New chat
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex-1 space-y-6 pb-6">
         {empty && (
-          <div className="pt-2">
-            <div className="flex flex-col items-center text-center">
-              <Mascot className="mascot-bob h-44 w-44 sm:h-52 sm:w-52" />
-              <div className="relative mt-2 max-w-md rounded-3xl bg-ink px-6 py-4 text-left text-bg shadow-lg">
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-ink"
-                />
-                <p className="font-display text-xl font-extrabold leading-snug">
-                  G&apos;day {first}. What are we sorting out today?
-                </p>
-                <p className="mt-1.5 text-sm text-bg/75">
-                  Ask me about Australian WHS, check what needs attention on
-                  site, or just tell me what to log and I&apos;ll draft it for
-                  you.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="pt-4">
+            <div className="grid gap-4 md:grid-cols-3">
               {GROUPS.map((g) => (
                 <section
                   key={g.label}
@@ -445,60 +403,78 @@ export function AssistantView() {
       </div>
 
       <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-bg from-70% to-transparent px-4 pb-4 pt-2 sm:-mx-8 sm:px-8">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send(input);
-          }}
-          className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-surface p-2 shadow-[0_12px_40px_-16px_oklch(0.23_0.02_255/0.35)] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
-        >
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Ask the assistant</span>
-            <textarea
-              ref={box}
-              value={input}
-              rows={1}
-              onChange={(e) => {
-                setInput(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+        <div className="flex items-end gap-3">
+          <Mascot
+            className={`mascot-bob hidden h-24 w-24 shrink-0 sm:block ${busy ? "opacity-90" : ""}`}
+          />
+          <div className="min-w-0 flex-1">
+            {empty && (
+              <div className="relative mb-3 max-w-md rounded-3xl rounded-bl-lg bg-ink px-5 py-3 text-bg shadow-lg">
+                <p className="font-display text-lg font-extrabold leading-snug">
+                  G&apos;day {first}. What are we sorting out today?
+                </p>
+                <p className="mt-1 text-sm text-bg/75">
+                  Ask about WHS, check what needs attention, or tell me what to
+                  log and I&apos;ll draft it.
+                </p>
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void send(input);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send(input);
-                }
-              }}
-              placeholder="Ask about WHS, your sites, or tell me what to log"
-              className="max-h-44 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-ink-soft"
-            />
-          </label>
-          <span className="hidden pb-1.5 sm:block">
-            <VoiceButton
-              label="Speak"
-              onText={(t) => setInput((v) => `${v}${v ? " " : ""}${t}`)}
-            />
-          </span>
-          {busy ? (
-            <button
-              type="button"
-              onClick={() => abort.current?.abort()}
-              aria-label="Stop"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg"
+              className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-surface p-2 shadow-[0_12px_40px_-16px_oklch(0.23_0.02_255/0.35)] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
             >
-              <span className="h-3 w-3 rounded-sm bg-bg" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              aria-label="Send"
-              disabled={!input.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-30"
-            >
-              <Icon name="arrow" className="h-4 w-4 -rotate-90" />
-            </button>
-          )}
-        </form>
+              <label className="min-w-0 flex-1">
+                <span className="sr-only">Ask the assistant</span>
+                <textarea
+                  ref={box}
+                  value={input}
+                  rows={1}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void send(input);
+                    }
+                  }}
+                  placeholder="Ask about WHS, your sites, or tell me what to log"
+                  className="max-h-44 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-ink-soft"
+                />
+              </label>
+              <span className="hidden pb-1.5 sm:block">
+                <VoiceButton
+                  label="Speak"
+                  onText={(t) => setInput((v) => `${v}${v ? " " : ""}${t}`)}
+                />
+              </span>
+              {busy ? (
+                <button
+                  type="button"
+                  onClick={() => abort.current?.abort()}
+                  aria-label="Stop"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg"
+                >
+                  <span className="h-3 w-3 rounded-sm bg-bg" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  aria-label="Send"
+                  disabled={!input.trim()}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-30"
+                >
+                  <Icon name="arrow" className="h-4 w-4 -rotate-90" />
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
         <p className="mt-2 text-center text-[11px] text-ink-soft">
           I can make mistakes. WHS answers are general information, not legal
           advice. Data for the selected project is sent with each question.
