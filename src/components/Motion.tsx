@@ -11,6 +11,11 @@ export function Motion() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // the app dashboard scrolls natively; smooth scrolling would swallow wheel events meant for its inner panels
+    if (pathname.startsWith("/dashboard")) {
+      document.documentElement.classList.remove("motion");
+      return;
+    }
     gsap.registerPlugin(ScrollTrigger);
 
     let cleanup: (() => void) | undefined;

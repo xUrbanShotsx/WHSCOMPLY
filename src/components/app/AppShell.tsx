@@ -116,6 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="App"
+        data-lenis-prevent
         className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 pb-3"
       >
         {GROUPS.map((g, gi) => (
