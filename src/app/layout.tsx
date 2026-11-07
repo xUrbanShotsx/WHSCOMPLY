@@ -75,7 +75,7 @@ const links = [
   ["About", "/about"],
   ["Resources", "/resources"],
   ["Demo dashboard", "/dashboard"],
-  ["Login", "https://auth.briesa.com/login"],
+  ["Login", "/dashboard"],
 ];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
