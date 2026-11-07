@@ -64,6 +64,36 @@ export function GlobalSearch() {
         sub: `Inspection · ${p(x.projectId)}`,
         href: `/dashboard/inspections/${x.id}`,
       })),
+      ...s.permits.map((x) => ({
+        id: x.id,
+        label: x.title,
+        sub: `${x.kind} permit · ${p(x.projectId)}`,
+        href: "/dashboard/permits",
+      })),
+      ...s.plant.map((x) => ({
+        id: x.id,
+        label: x.name,
+        sub: `Plant · ${p(x.projectId)}`,
+        href: "/dashboard/plant",
+      })),
+      ...s.chemicals.map((x) => ({
+        id: x.id,
+        label: x.name,
+        sub: `Chemical · ${p(x.projectId)}`,
+        href: "/dashboard/chemicals",
+      })),
+      ...s.docs.map((x) => ({
+        id: x.id,
+        label: x.title,
+        sub: x.category,
+        href: "/dashboard/documents",
+      })),
+      ...s.visitors.map((x) => ({
+        id: x.id,
+        label: x.name,
+        sub: `Visitor · ${x.company}`,
+        href: "/dashboard/visitors",
+      })),
       ...s.workers.map((x) => ({
         id: x.id,
         label: x.name,

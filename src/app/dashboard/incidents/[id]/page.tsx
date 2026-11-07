@@ -183,6 +183,26 @@ export default function IncidentDetail() {
                   ))}
                 </div>
               </fieldset>
+              {(x.type === "Injury" || x.type === "Dangerous incident") && (
+                <label className="flex items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    disabled={closed}
+                    checked={!!x.lostTime}
+                    onChange={(e) =>
+                      s.updateIncident(x.id, { lostTime: e.target.checked })
+                    }
+                    className="mt-1 accent-[var(--ink)]"
+                  />
+                  <span>
+                    <span className="font-medium">Lost time injury</span>
+                    <span className="block text-xs text-ink-soft">
+                      The worker was unable to work a full shift afterwards.
+                      Counted in the injury frequency rate on Reports.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           </Card>
         </div>

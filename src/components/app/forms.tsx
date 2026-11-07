@@ -11,6 +11,7 @@ import {
   TICKET_KINDS,
   rating,
   type IncidentType,
+  type MeetingKind,
   type ProjectStatus,
   type RiskLevel,
 } from "@/lib/data";
@@ -19,13 +20,19 @@ import { useScope, type NewAction } from "./DemoStore";
 import { Modal } from "./Modal";
 import { btnDark, btnLight, Field, field, RiskPill } from "./ui";
 
-const fd = (e: FormEvent<HTMLFormElement>) => {
+export const fd = (e: FormEvent<HTMLFormElement>) => {
   e.preventDefault();
   const d = new FormData(e.currentTarget);
   return (k: string) => String(d.get(k) ?? "").trim();
 };
 
-function Actions({ onClose, submit }: { onClose: () => void; submit: string }) {
+export function Actions({
+  onClose,
+  submit,
+}: {
+  onClose: () => void;
+  submit: string;
+}) {
   return (
     <div className="mt-6 flex justify-end gap-2">
       <button type="button" onClick={onClose} className={btnLight}>
@@ -39,7 +46,7 @@ function Actions({ onClose, submit }: { onClose: () => void; submit: string }) {
 }
 
 /** A project picker that starts on the project chosen in the top bar. */
-function ProjectField({ name = "projectId" }: { name?: string }) {
+export function ProjectField({ name = "projectId" }: { name?: string }) {
   const { projects, scopeId, all } = useScope();
   return (
     <Field label="Project">
@@ -64,7 +71,7 @@ function ProjectField({ name = "projectId" }: { name?: string }) {
   );
 }
 
-function Shell({
+export function Shell({
   title,
   sub,
   onClose,
@@ -488,11 +495,19 @@ export function RiskForm({
 
 /* ---------- toolbox talks ---------- */
 
-export function TalkForm({ onClose }: { onClose: () => void }) {
+export function TalkForm({
+  onClose,
+  kinds = ["Toolbox talk"],
+}: {
+  onClose: () => void;
+  kinds?: MeetingKind[];
+}) {
   const { addTalk } = useScope();
+  const single = kinds.length === 1;
+  const noun = single ? kinds[0].toLowerCase() : "meeting";
   return (
     <Shell
-      title="Schedule a toolbox talk"
+      title={`Schedule a ${noun}`}
       sub="Everyone assigned to the project is added to the attendance list"
       onClose={onClose}
     >
@@ -500,6 +515,7 @@ export function TalkForm({ onClose }: { onClose: () => void }) {
         onSubmit={(e) => {
           const g = fd(e);
           addTalk({
+            kind: (g("kind") || kinds[0]) as MeetingKind,
             projectId: g("projectId"),
             topic: g("topic"),
             date: g("date"),
@@ -510,13 +526,26 @@ export function TalkForm({ onClose }: { onClose: () => void }) {
         }}
         className="grid gap-4 sm:grid-cols-2"
       >
-        <Field label="Topic" className="sm:col-span-2">
+        {!single && (
+          <Field label="Type" className="sm:col-span-2">
+            <select name="kind" defaultValue={kinds[0]} className={field}>
+              {kinds.map((k) => (
+                <option key={k}>{k}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+        <Field label={single ? "Topic" : "Subject"} className="sm:col-span-2">
           <input
             name="topic"
             required
-            list="talk-topics"
+            list={single ? "talk-topics" : undefined}
             className={field}
-            placeholder="Choose or type a topic"
+            placeholder={
+              single
+                ? "Choose or type a topic"
+                : "Monthly WHS committee meeting"
+            }
           />
           <datalist id="talk-topics">
             {TALK_TOPICS.map((t) => (
@@ -534,7 +563,7 @@ export function TalkForm({ onClose }: { onClose: () => void }) {
             className={field}
           />
         </Field>
-        <Field label="Presenter" className="sm:col-span-2">
+        <Field label={single ? "Presenter" : "Chair"} className="sm:col-span-2">
           <input
             name="presenter"
             required
@@ -542,11 +571,15 @@ export function TalkForm({ onClose }: { onClose: () => void }) {
             className={field}
           />
         </Field>
-        <Field label="Key points" hint="optional" className="sm:col-span-2">
+        <Field
+          label={single ? "Key points" : "Agenda"}
+          hint="optional"
+          className="sm:col-span-2"
+        >
           <textarea name="notes" rows={3} className={field} />
         </Field>
         <div className="sm:col-span-2">
-          <Actions onClose={onClose} submit="Schedule talk" />
+          <Actions onClose={onClose} submit="Schedule" />
         </div>
       </form>
     </Shell>

@@ -15,12 +15,16 @@ type NavItem = { href: string; label: string; icon: IconName };
 
 const GROUPS: { label?: string; items: NavItem[] }[] = [
   {
-    items: [{ href: "/dashboard", label: "Dashboard", icon: "grid" }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: "grid" },
+      { href: "/dashboard/reports", label: "Reports", icon: "scale" },
+    ],
   },
   {
-    label: "Safety",
+    label: "Site safety",
     items: [
       { href: "/dashboard/swms", label: "SWMS", icon: "file" },
+      { href: "/dashboard/permits", label: "Permits to work", icon: "lock" },
       { href: "/dashboard/risks", label: "Risk register", icon: "alert" },
       { href: "/dashboard/toolbox", label: "Toolbox talks", icon: "users" },
       {
@@ -33,19 +37,43 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "Plant and materials",
+    items: [
+      {
+        href: "/dashboard/plant",
+        label: "Plant and equipment",
+        icon: "settings",
+      },
+      {
+        href: "/dashboard/chemicals",
+        label: "Hazardous chemicals",
+        icon: "flag",
+      },
+      { href: "/dashboard/emergency", label: "Emergency", icon: "bell" },
+    ],
+  },
+  {
     label: "People",
     items: [
       { href: "/dashboard/people", label: "Workers and tickets", icon: "id" },
+      { href: "/dashboard/training", label: "Training matrix", icon: "list" },
       {
         href: "/dashboard/subcontractors",
         label: "Subcontractors",
         icon: "store",
       },
+      { href: "/dashboard/visitors", label: "Visitors", icon: "user" },
     ],
   },
   {
     label: "Business",
     items: [
+      {
+        href: "/dashboard/consultation",
+        label: "Consultation",
+        icon: "calendar",
+      },
+      { href: "/dashboard/documents", label: "Documents", icon: "book" },
       { href: "/dashboard/projects", label: "Projects", icon: "building" },
       { href: "/dashboard/audit", label: "Audit log", icon: "clock" },
     ],

@@ -1,7 +1,14 @@
+import { todayISO } from "./format";
 import {
   daysUntil,
   expiryOf,
   type Action,
+  type Chemical,
+  type Doc,
+  type Drill,
+  type Permit,
+  type Plant,
+  type Visitor,
   type Incident,
   type Risk,
   type Subcontractor,
@@ -13,7 +20,19 @@ import {
 export type Attention = {
   id: string;
   kind:
-    "ticket" | "insurance" | "swms" | "action" | "risk" | "incident" | "talk";
+    | "ticket"
+    | "insurance"
+    | "swms"
+    | "action"
+    | "risk"
+    | "incident"
+    | "talk"
+    | "permit"
+    | "plant"
+    | "chemical"
+    | "drill"
+    | "doc"
+    | "visitor";
   title: string;
   where: string;
   due: string;
@@ -40,6 +59,12 @@ type Input = {
   risks: Risk[];
   incidents: Incident[];
   talks: Talk[];
+  permits: Permit[];
+  plant: Plant[];
+  chemicals: Chemical[];
+  drills: Drill[];
+  docs: Doc[];
+  visitors: Visitor[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -190,6 +215,168 @@ export function attentionFor(i: Input): Attention[] {
       rank: d + 2,
       who: ini(t.presenter),
       projectId: t.projectId,
+    });
+  }
+
+  for (const p of i.permits) {
+    if (p.status === "Approved" && daysUntil(p.until) < 0)
+      out.push({
+        id: `pm-${p.id}`,
+        kind: "permit",
+        title: `Permit still open: ${p.title}`,
+        where: `${p.kind} · ${i.projectName(p.projectId)}`,
+        due: `Expired ${-daysUntil(p.until)} day${daysUntil(p.until) === -1 ? "" : "s"} ago`,
+        href: "/dashboard/permits",
+        tone: "owed",
+        rank: daysUntil(p.until),
+        who: ini(p.issuedTo),
+        projectId: p.projectId,
+      });
+    else if (p.status === "Requested")
+      out.push({
+        id: `pm-${p.id}`,
+        kind: "permit",
+        title: `Permit awaiting approval: ${p.title}`,
+        where: `${p.kind} · ${i.projectName(p.projectId)}`,
+        due: dueText(daysUntil(p.from)),
+        href: "/dashboard/permits",
+        tone: "neutral",
+        rank: daysUntil(p.from),
+        who: ini(p.requestedBy),
+        projectId: p.projectId,
+      });
+  }
+
+  for (const p of i.plant) {
+    if (p.status === "Out of service")
+      out.push({
+        id: `pl-${p.id}-oos`,
+        kind: "plant",
+        title: `${p.name} is out of service`,
+        where: p.defect || i.projectName(p.projectId),
+        due: "Defect open",
+        href: "/dashboard/plant",
+        tone: "owed",
+        rank: -2,
+        who: ini(p.name),
+        projectId: p.projectId,
+      });
+    if (p.status === "Off site") continue;
+    const svc = daysUntil(p.nextService);
+    if (svc <= 7)
+      out.push({
+        id: `pl-${p.id}-svc`,
+        kind: "plant",
+        title: `Service due: ${p.name}`,
+        where: i.projectName(p.projectId),
+        due: dueText(svc),
+        href: "/dashboard/plant",
+        tone: svc < 0 ? "owed" : "neutral",
+        rank: svc,
+        who: ini(p.name),
+        projectId: p.projectId,
+      });
+    if (p.tagDue) {
+      const tag = daysUntil(p.tagDue);
+      if (tag <= 7)
+        out.push({
+          id: `pl-${p.id}-tag`,
+          kind: "plant",
+          title: `Test and tag due: ${p.name}`,
+          where: i.projectName(p.projectId),
+          due: dueText(tag),
+          href: "/dashboard/plant",
+          tone: tag < 0 ? "owed" : "neutral",
+          rank: tag,
+          who: ini(p.name),
+          projectId: p.projectId,
+        });
+    }
+  }
+
+  for (const c of i.chemicals) {
+    if (c.status !== "In use") continue;
+    if (!c.hasSds)
+      out.push({
+        id: `ch-${c.id}`,
+        kind: "chemical",
+        title: `No safety data sheet: ${c.name}`,
+        where: i.projectName(c.projectId),
+        due: "Obtain from supplier",
+        href: "/dashboard/chemicals",
+        tone: "owed",
+        rank: -1,
+        who: ini(c.supplier),
+        projectId: c.projectId,
+      });
+    else if (c.sdsDate && daysUntil(c.sdsDate) < -1825)
+      out.push({
+        id: `ch-${c.id}`,
+        kind: "chemical",
+        title: `Safety data sheet over 5 years old: ${c.name}`,
+        where: i.projectName(c.projectId),
+        due: "Request a current SDS",
+        href: "/dashboard/chemicals",
+        tone: "owed",
+        rank: -1,
+        who: ini(c.supplier),
+        projectId: c.projectId,
+      });
+  }
+
+  for (const d of i.drills) {
+    const later = i.drills.some(
+      (x) =>
+        x.projectId === d.projectId && x.kind === d.kind && x.date > d.date,
+    );
+    if (later) continue;
+    const n = daysUntil(d.nextDue);
+    if (n > 14) continue;
+    out.push({
+      id: `dr-${d.id}`,
+      kind: "drill",
+      title: `${d.kind} due`,
+      where: i.projectName(d.projectId),
+      due: dueText(n),
+      href: "/dashboard/emergency",
+      tone: n < 0 ? "owed" : "neutral",
+      rank: n,
+      who: ini(d.by),
+      projectId: d.projectId,
+    });
+  }
+
+  for (const d of i.docs) {
+    const n = daysUntil(d.reviewDue);
+    if (n > 14) continue;
+    out.push({
+      id: `dc-${d.id}`,
+      kind: "doc",
+      title: `Review due: ${d.title}`,
+      where:
+        d.projectId === "all" ? "Whole business" : i.projectName(d.projectId),
+      due: dueText(n),
+      href: "/dashboard/documents",
+      tone: n < 0 ? "owed" : "neutral",
+      rank: n,
+      who: ini(d.owner),
+      projectId: d.projectId,
+    });
+  }
+
+  for (const v of i.visitors) {
+    if (v.outAt || v.inAt.slice(0, 10) >= todayISO()) continue;
+    out.push({
+      id: `v-${v.id}`,
+      kind: "visitor",
+      title: `Visitor never signed out: ${v.name}`,
+      where: i.projectName(v.projectId),
+      due: "Signed in on an earlier day",
+      href: "/dashboard/visitors",
+      tone: "owed",
+      rank: -1,
+      who: ini(v.name),
+      projectId: v.projectId,
     });
   }
 

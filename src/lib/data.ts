@@ -41,6 +41,12 @@ export type Project = {
   start: string;
   /** worker ids currently signed on at the gate */
   onSite: string[];
+  /** hours worked on the project, used for injury frequency rates */
+  hours: number;
+  assembly: string;
+  hospital: string;
+  emergencyContact: string;
+  wardens: string;
 };
 
 export type Ticket = {
@@ -114,9 +120,17 @@ export type Risk = {
   status: "Open" | "Controlled" | "Closed";
 };
 
+export type MeetingKind =
+  | "Toolbox talk"
+  | "Pre-start meeting"
+  | "WHS committee"
+  | "Coordination meeting";
+
 export type Talk = {
   id: string;
   projectId: string;
+  /** absent on records saved before meetings existed, which are toolbox talks */
+  kind?: MeetingKind;
   topic: string;
   date: string;
   presenter: string;
@@ -172,6 +186,8 @@ export type Incident = {
   notifiable: boolean | null;
   status: IncidentStatus;
   cause: string;
+  /** an injury that kept someone off work, for the injury frequency rate */
+  lostTime?: boolean;
 };
 
 export type Action = {
@@ -193,6 +209,13 @@ export type AuditArea =
   | "Incidents"
   | "People"
   | "Projects"
+  | "Permits"
+  | "Plant"
+  | "Chemicals"
+  | "Emergency"
+  | "Visitors"
+  | "Consultation"
+  | "Documents"
   | "Settings";
 
 export type AuditEvent = {
@@ -236,6 +259,144 @@ export type Settings = {
   };
   /** days of warning before a ticket or document expires */
   warnDays: number;
+};
+
+/* ---------- permits, plant, chemicals, emergency, visitors, documents ---------- */
+
+export type PermitKind =
+  | "Hot work"
+  | "Confined space"
+  | "Excavation"
+  | "Working at height"
+  | "Electrical isolation"
+  | "Crane lift"
+  | "Demolition";
+
+export const PERMIT_CHECKS: Record<PermitKind, string[]> = {
+  "Hot work": [
+    "Combustibles removed or protected within 10 m",
+    "Fire extinguisher at the work area",
+    "Fire watch assigned for the work and 30 minutes after",
+    "Gas test done where flammable vapour is possible",
+  ],
+  "Confined space": [
+    "Atmosphere tested and recorded",
+    "Isolation of energy and services confirmed",
+    "Standby person in place",
+    "Rescue plan and equipment ready",
+    "Entry and exit log started",
+  ],
+  Excavation: [
+    "Underground services located and marked",
+    "Shoring or battering in place",
+    "Edge protection and barriers erected",
+    "Access and egress provided",
+  ],
+  "Working at height": [
+    "Edge protection or fall arrest in place",
+    "Harnesses inspected within the last 6 months",
+    "Exclusion zone set below",
+    "Rescue plan for a suspended worker",
+  ],
+  "Electrical isolation": [
+    "Circuit isolated and locked out",
+    "Danger tag fitted",
+    "Isolation proved dead with a tested instrument",
+    "Competent person assigned",
+  ],
+  "Crane lift": [
+    "Lift plan approved",
+    "Crane and rigging inspected",
+    "Exclusion zone set and spotter in place",
+    "Dogger and operator licences sighted",
+  ],
+  Demolition: [
+    "Asbestos register checked",
+    "Structure assessed by a competent person",
+    "Services isolated",
+    "Exclusion zone and signage in place",
+  ],
+};
+
+export type Permit = {
+  id: string;
+  projectId: string;
+  kind: PermitKind;
+  title: string;
+  location: string;
+  requestedBy: string;
+  issuedTo: string;
+  from: string;
+  until: string;
+  status: "Requested" | "Approved" | "Closed" | "Cancelled";
+  checks: { id: string; text: string; done: boolean }[];
+  approver: string;
+};
+
+export type Plant = {
+  id: string;
+  projectId: string;
+  name: string;
+  kind: string;
+  serial: string;
+  owner: string;
+  lastService: string;
+  nextService: string;
+  /** next test and tag date, or null where it does not apply */
+  tagDue: string | null;
+  lastPrestart: string | null;
+  status: "In service" | "Out of service" | "Off site";
+  defect: string;
+};
+
+export type Chemical = {
+  id: string;
+  projectId: string;
+  name: string;
+  supplier: string;
+  hazard: string;
+  quantity: string;
+  location: string;
+  hasSds: boolean;
+  /** safety data sheets are reviewed at least every five years */
+  sdsDate: string | null;
+  controls: string;
+  status: "In use" | "Removed";
+};
+
+export type Drill = {
+  id: string;
+  projectId: string;
+  kind: string;
+  date: string;
+  by: string;
+  notes: string;
+  nextDue: string;
+};
+
+export type Visitor = {
+  id: string;
+  projectId: string;
+  name: string;
+  company: string;
+  purpose: string;
+  host: string;
+  inAt: string;
+  outAt: string | null;
+  inducted: boolean;
+};
+
+export type Doc = {
+  id: string;
+  /** "all" for a business-wide document */
+  projectId: string;
+  title: string;
+  category: "Policy" | "Procedure" | "Plan" | "Form";
+  version: string;
+  owner: string;
+  updated: string;
+  reviewDue: string;
+  signed: string[];
 };
 
 export const me = {
@@ -387,6 +548,11 @@ export const seedProjects: Project[] = [
     status: "Live",
     start: addDays(-120),
     onSite: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva"],
+    hours: 18400,
+    assembly: "Corner of Marsh Ave and King St, opposite the bus stop",
+    hospital: "Royal Prince Alfred Hospital, Missenden Rd, Camperdown",
+    emergencyContact: "Sam Kowalski 0412 555 010",
+    wardens: "Ryan Dunn, Tran Nguyen",
   },
   {
     id: "p-quarry",
@@ -398,6 +564,11 @@ export const seedProjects: Project[] = [
     status: "Live",
     start: addDays(-210),
     onSite: ["w-becker", "w-reyes"],
+    hours: 26200,
+    assembly: "Site car park, north-east corner",
+    hospital: "Canterbury Hospital, Canterbury Rd, Campsie",
+    emergencyContact: "Dana Whitfield 0412 555 020",
+    wardens: "Ana Reyes, Tom Becker",
   },
   {
     id: "p-harbour",
@@ -409,6 +580,11 @@ export const seedProjects: Project[] = [
     status: "Starting",
     start: addDays(5),
     onSite: [],
+    hours: 0,
+    assembly: "Harbour Street footpath, outside the lobby",
+    hospital: "Sydney Hospital, Macquarie St, Sydney",
+    emergencyContact: "Sam Kowalski 0412 555 010",
+    wardens: "To be assigned",
   },
 ];
 
@@ -1105,3 +1281,424 @@ export const seedSettings: Settings = {
   notify: { tickets: true, insurances: true, actions: true, incidents: true },
   warnDays: 30,
 };
+
+/* ---------- seeds for the newer modules ---------- */
+
+seedIncidents.push({
+  id: "inc4",
+  projectId: "p-quarry",
+  type: "Injury",
+  title: "Sprained ankle stepping off scaffold",
+  date: addDays(-41),
+  time: "11:15",
+  location: "Stage 2, south scaffold",
+  reporter: "Dana Whitfield",
+  people: "Ana Reyes",
+  description:
+    "Ana missed the last rung stepping off the scaffold and rolled an ankle. Medical treatment was given and she took two days off work.",
+  severity: "Medium",
+  notifiable: false,
+  status: "Closed",
+  cause: "Loose sole board at the base of the access ladder.",
+  lostTime: true,
+});
+
+seedTalks.push(
+  {
+    id: "mt1",
+    projectId: "p-marsh",
+    kind: "WHS committee",
+    topic: "Monthly WHS committee meeting",
+    date: addDays(4),
+    presenter: "Dana Whitfield",
+    notes: "",
+    expected: ["w-dunn", "w-nguyen", "w-okafor"],
+    attended: [],
+  },
+  {
+    id: "mt2",
+    projectId: "p-marsh",
+    kind: "Pre-start meeting",
+    topic: "Level 3 pre-start",
+    date: addDays(-1),
+    presenter: "Ryan Dunn",
+    notes: "Crane lift sequence, exclusion zones and deliveries.",
+    expected: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva"],
+    attended: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva"],
+  },
+);
+
+const checks = (kind: PermitKind, done: (i: number) => boolean) =>
+  PERMIT_CHECKS[kind].map((text, i) => ({ id: `c${i}`, text, done: done(i) }));
+
+export const seedPermits: Permit[] = [
+  {
+    id: "pm1",
+    projectId: "p-marsh",
+    kind: "Hot work",
+    title: "Cutting starter bars, Level 3 east",
+    location: "Level 3, east slab edge",
+    requestedBy: "Ryan Dunn",
+    issuedTo: "Jae Kim",
+    from: addDays(0),
+    until: addDays(0),
+    status: "Approved",
+    approver: "Sam Kowalski",
+    checks: checks("Hot work", () => true),
+  },
+  {
+    id: "pm2",
+    projectId: "p-marsh",
+    kind: "Crane lift",
+    title: "Lift of Level 4 formwork table",
+    location: "Street frontage",
+    requestedBy: "Ryan Dunn",
+    issuedTo: "Tran Nguyen",
+    from: addDays(1),
+    until: addDays(1),
+    status: "Requested",
+    approver: "",
+    checks: checks("Crane lift", (i) => i < 2),
+  },
+  {
+    id: "pm3",
+    projectId: "p-quarry",
+    kind: "Excavation",
+    title: "Stormwater trench, grid B to D",
+    location: "Rear yard",
+    requestedBy: "Dana Whitfield",
+    issuedTo: "Ana Reyes",
+    from: addDays(-6),
+    until: addDays(-2),
+    status: "Approved",
+    approver: "Dana Whitfield",
+    checks: checks("Excavation", () => true),
+  },
+  {
+    id: "pm4",
+    projectId: "p-marsh",
+    kind: "Electrical isolation",
+    title: "Isolate temporary DB for relocation",
+    location: "Level 1 plant room",
+    requestedBy: "Ryan Dunn",
+    issuedTo: "Tom Becker",
+    from: addDays(-12),
+    until: addDays(-12),
+    status: "Closed",
+    approver: "Sam Kowalski",
+    checks: checks("Electrical isolation", () => true),
+  },
+];
+
+export const seedPlant: Plant[] = [
+  {
+    id: "pl1",
+    projectId: "p-marsh",
+    name: "Tower crane TC-1",
+    kind: "Crane",
+    serial: "LIEB-2290",
+    owner: "Hired, Skyline Cranes",
+    lastService: addDays(-40),
+    nextService: addDays(50),
+    tagDue: null,
+    lastPrestart: T,
+    status: "In service",
+    defect: "",
+  },
+  {
+    id: "pl2",
+    projectId: "p-marsh",
+    name: "Scissor lift SL-3",
+    kind: "EWP",
+    serial: "JLG-88231",
+    owner: "Owned",
+    lastService: addDays(-100),
+    nextService: addDays(-10),
+    tagDue: addDays(40),
+    lastPrestart: addDays(-1),
+    status: "In service",
+    defect: "",
+  },
+  {
+    id: "pl3",
+    projectId: "p-marsh",
+    name: "Concrete pump P-2",
+    kind: "Pump",
+    serial: "PUT-4410",
+    owner: "Ridgeline Concrete",
+    lastService: addDays(-20),
+    nextService: addDays(70),
+    tagDue: addDays(-4),
+    lastPrestart: T,
+    status: "Out of service",
+    defect: "Hydraulic leak at the boom cylinder. Tagged out until repaired.",
+  },
+  {
+    id: "pl4",
+    projectId: "p-quarry",
+    name: "Excavator EX-1 (5 t)",
+    kind: "Excavator",
+    serial: "CAT-30512",
+    owner: "Owned",
+    lastService: addDays(-60),
+    nextService: addDays(30),
+    tagDue: null,
+    lastPrestart: T,
+    status: "In service",
+    defect: "",
+  },
+  {
+    id: "pl5",
+    projectId: "p-quarry",
+    name: "Power tools and leads, site box",
+    kind: "Electrical",
+    serial: "Batch 22",
+    owner: "Owned",
+    lastService: addDays(-90),
+    nextService: addDays(90),
+    tagDue: addDays(12),
+    lastPrestart: null,
+    status: "In service",
+    defect: "",
+  },
+];
+
+export const seedChemicals: Chemical[] = [
+  {
+    id: "ch1",
+    projectId: "p-marsh",
+    name: "Concrete curing compound",
+    supplier: "Sika",
+    hazard: "Flammable liquid, category 3",
+    quantity: "4 x 20 L",
+    location: "Level 1 chemical cabinet",
+    hasSds: true,
+    sdsDate: addDays(-600),
+    controls:
+      "Stored in a bunded cabinet, no ignition sources, spill kit adjacent.",
+    status: "In use",
+  },
+  {
+    id: "ch2",
+    projectId: "p-marsh",
+    name: "Form release oil",
+    supplier: "Fosroc",
+    hazard: "Skin irritant",
+    quantity: "2 x 200 L",
+    location: "Laydown area",
+    hasSds: false,
+    sdsDate: null,
+    controls: "Gloves and eye protection when handling.",
+    status: "In use",
+  },
+  {
+    id: "ch3",
+    projectId: "p-quarry",
+    name: "Acetylene and oxygen cylinders",
+    supplier: "BOC",
+    hazard: "Compressed gas, flammable",
+    quantity: "2 + 2",
+    location: "Gas cage, plant room",
+    hasSds: true,
+    sdsDate: addDays(-1900),
+    controls: "Secured upright in the gas cage, flashback arrestors fitted.",
+    status: "In use",
+  },
+  {
+    id: "ch4",
+    projectId: "p-harbour",
+    name: "Asbestos sealant",
+    supplier: "Licensed removalist",
+    hazard: "Asbestos-containing material",
+    quantity: "Nil on site",
+    location: "N/A",
+    hasSds: true,
+    sdsDate: addDays(-120),
+    controls: "Only the licensed removalist handles this product.",
+    status: "Removed",
+  },
+];
+
+export const seedDrills: Drill[] = [
+  {
+    id: "dr1",
+    projectId: "p-marsh",
+    kind: "Evacuation drill",
+    date: addDays(-75),
+    by: "Sam Kowalski",
+    notes:
+      "All 41 workers mustered in 4 minutes. The Level 3 stair needed a clearer sign.",
+    nextDue: addDays(15),
+  },
+  {
+    id: "dr2",
+    projectId: "p-marsh",
+    kind: "First aid kit check",
+    date: addDays(-20),
+    by: "Ryan Dunn",
+    notes: "Restocked burn gel and eyewash.",
+    nextDue: addDays(70),
+  },
+  {
+    id: "dr3",
+    projectId: "p-quarry",
+    kind: "Evacuation drill",
+    date: addDays(-130),
+    by: "Dana Whitfield",
+    notes: "Muster point moved after the stage 2 hoarding went up.",
+    nextDue: addDays(-40),
+  },
+];
+
+export const seedVisitors: Visitor[] = [
+  {
+    id: "v1",
+    projectId: "p-marsh",
+    name: "Karen Doyle",
+    company: "Harlow Developments",
+    purpose: "Client inspection",
+    host: "Sam Kowalski",
+    inAt: `${T} 09:30`,
+    outAt: null,
+    inducted: true,
+  },
+  {
+    id: "v2",
+    projectId: "p-marsh",
+    name: "Imran Haddad",
+    company: "City building certifier",
+    purpose: "Mandatory inspection",
+    host: "Sam Kowalski",
+    inAt: `${addDays(-1)} 13:10`,
+    outAt: `${addDays(-1)} 14:20`,
+    inducted: true,
+  },
+  {
+    id: "v3",
+    projectId: "p-quarry",
+    name: "Paul Wen",
+    company: "Pitt Hydraulics",
+    purpose: "Delivery",
+    host: "Dana Whitfield",
+    inAt: `${T} 07:50`,
+    outAt: `${T} 08:05`,
+    inducted: false,
+  },
+];
+
+export const seedDocs: Doc[] = [
+  {
+    id: "dc1",
+    projectId: "all",
+    title: "WHS policy",
+    category: "Policy",
+    version: "3.0",
+    owner: "Dana Whitfield",
+    updated: addDays(-200),
+    reviewDue: addDays(165),
+    signed: seedWorkers.map((w) => w.id),
+  },
+  {
+    id: "dc2",
+    projectId: "all",
+    title: "Drug and alcohol policy",
+    category: "Policy",
+    version: "2.1",
+    owner: "Dana Whitfield",
+    updated: addDays(-30),
+    reviewDue: addDays(335),
+    signed: ["w-dunn", "w-nguyen", "w-okafor", "w-becker"],
+  },
+  {
+    id: "dc3",
+    projectId: "all",
+    title: "Incident reporting procedure",
+    category: "Procedure",
+    version: "1.4",
+    owner: "Sam Kowalski",
+    updated: addDays(-400),
+    reviewDue: addDays(-35),
+    signed: ["w-dunn", "w-nguyen", "w-kim", "w-silva"],
+  },
+  {
+    id: "dc4",
+    projectId: "all",
+    title: "Manual handling procedure",
+    category: "Procedure",
+    version: "1.0",
+    owner: "Sam Kowalski",
+    updated: addDays(-90),
+    reviewDue: addDays(275),
+    signed: seedWorkers.slice(0, 5).map((w) => w.id),
+  },
+  {
+    id: "dc5",
+    projectId: "p-marsh",
+    title: "Site WHS management plan, 14 Marsh Ave",
+    category: "Plan",
+    version: "2.0",
+    owner: "Sam Kowalski",
+    updated: addDays(-60),
+    reviewDue: addDays(30),
+    signed: ["w-dunn", "w-nguyen", "w-okafor", "w-kim", "w-silva"],
+  },
+  {
+    id: "dc6",
+    projectId: "p-marsh",
+    title: "Emergency response plan, 14 Marsh Ave",
+    category: "Plan",
+    version: "1.2",
+    owner: "Sam Kowalski",
+    updated: addDays(-75),
+    reviewDue: addDays(105),
+    signed: ["w-dunn", "w-nguyen", "w-okafor"],
+  },
+  {
+    id: "dc7",
+    projectId: "p-harbour",
+    title: "Asbestos management plan, Harbour St",
+    category: "Plan",
+    version: "1.0",
+    owner: "Sam Kowalski",
+    updated: addDays(-14),
+    reviewDue: addDays(350),
+    signed: [],
+  },
+];
+
+export const MEETING_KINDS: MeetingKind[] = [
+  "Toolbox talk",
+  "Pre-start meeting",
+  "WHS committee",
+  "Coordination meeting",
+];
+
+export const DRILL_KINDS = [
+  "Evacuation drill",
+  "Fire warden check",
+  "First aid kit check",
+  "Emergency plan review",
+];
+
+export const PLANT_KINDS = [
+  "Crane",
+  "EWP",
+  "Excavator",
+  "Forklift",
+  "Pump",
+  "Scaffold",
+  "Electrical",
+  "Hand tools",
+  "Other",
+];
+
+export const HAZARD_CLASSES = [
+  "Flammable liquid",
+  "Compressed gas",
+  "Corrosive",
+  "Toxic",
+  "Skin irritant",
+  "Oxidiser",
+  "Asbestos-containing material",
+  "Other",
+];

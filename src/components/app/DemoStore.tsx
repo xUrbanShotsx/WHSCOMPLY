@@ -10,9 +10,16 @@ import {
 import {
   INCIDENT_FLOW,
   INSPECTION_TEMPLATES,
+  PERMIT_CHECKS,
   initialsOf,
   me,
   seedActions,
+  seedChemicals,
+  seedDocs,
+  seedDrills,
+  seedPermits,
+  seedPlant,
+  seedVisitors,
   seedAudit,
   seedIncidents,
   seedInspections,
@@ -25,6 +32,13 @@ import {
   seedTalks,
   seedWorkers,
   type Action,
+  type Chemical,
+  type Doc,
+  type Drill,
+  type MeetingKind,
+  type Permit,
+  type Plant,
+  type Visitor,
   type AuditArea,
   type AuditEvent,
   type Incident,
@@ -45,7 +59,7 @@ import {
 } from "@/lib/data";
 import { todayISO } from "@/lib/format";
 
-const KEY = "whscomply-demo-v2";
+const KEY = "whscomply-demo-v3";
 
 export const ALL = "all";
 
@@ -64,6 +78,12 @@ type Saved = {
   audit: AuditEvent[];
   members: Member[];
   settings: Settings;
+  permits: Permit[];
+  plant: Plant[];
+  chemicals: Chemical[];
+  drills: Drill[];
+  visitors: Visitor[];
+  docs: Doc[];
 };
 
 const SEED: Saved = {
@@ -80,6 +100,12 @@ const SEED: Saved = {
   audit: seedAudit,
   members: seedMembers,
   settings: seedSettings,
+  permits: seedPermits,
+  plant: seedPlant,
+  chemicals: seedChemicals,
+  drills: seedDrills,
+  visitors: seedVisitors,
+  docs: seedDocs,
 };
 
 /* ---- a tiny external store over localStorage, so state survives navigation and reloads ---- */
@@ -103,7 +129,13 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.actions) &&
     Array.isArray(p.audit) &&
     Array.isArray(p.members) &&
-    !!p.settings
+    !!p.settings &&
+    Array.isArray(p.permits) &&
+    Array.isArray(p.plant) &&
+    Array.isArray(p.chemicals) &&
+    Array.isArray(p.drills) &&
+    Array.isArray(p.visitors) &&
+    Array.isArray(p.docs)
   );
 }
 
@@ -218,6 +250,32 @@ export type NewRisk = Omit<Risk, "id">;
 export type NewTalk = Pick<
   Talk,
   "projectId" | "topic" | "date" | "presenter" | "notes"
+> & { kind?: MeetingKind };
+
+export type NewPermit = Pick<
+  Permit,
+  | "projectId"
+  | "kind"
+  | "title"
+  | "location"
+  | "requestedBy"
+  | "issuedTo"
+  | "from"
+  | "until"
+>;
+export type NewPlant = Pick<
+  Plant,
+  "projectId" | "name" | "kind" | "serial" | "owner" | "nextService" | "tagDue"
+>;
+export type NewChemical = Omit<Chemical, "id" | "status">;
+export type NewDrill = Omit<Drill, "id">;
+export type NewVisitor = Pick<
+  Visitor,
+  "projectId" | "name" | "company" | "purpose" | "host" | "inducted"
+>;
+export type NewDoc = Pick<
+  Doc,
+  "projectId" | "title" | "category" | "version" | "owner" | "reviewDue"
 >;
 export type NewIncident = Omit<
   Incident,
@@ -258,6 +316,39 @@ type Store = Saved & {
   removeRisk: (id: string) => void;
 
   addTalk: (i: NewTalk) => string;
+
+  addPermit: (i: NewPermit) => string;
+  toggleCheck: (id: string, checkId: string) => void;
+  setPermitStatus: (id: string, status: Permit["status"]) => void;
+
+  addPlant: (i: NewPlant) => void;
+  logPrestart: (id: string) => void;
+  logService: (id: string, nextService: string) => void;
+  setPlantStatus: (
+    id: string,
+    status: Plant["status"],
+    defect?: string,
+  ) => void;
+  tagPlant: (id: string, nextDue: string) => void;
+
+  addChemical: (i: NewChemical) => void;
+  updateChemical: (id: string, patch: Partial<Chemical>) => void;
+
+  addDrill: (i: NewDrill) => void;
+  updateEmergency: (
+    projectId: string,
+    patch: Partial<
+      Pick<Project, "assembly" | "hospital" | "emergencyContact" | "wardens">
+    >,
+  ) => void;
+  setHours: (projectId: string, hours: number) => void;
+
+  signInVisitor: (i: NewVisitor) => void;
+  signOutVisitor: (id: string) => void;
+
+  addDocument: (i: NewDoc) => void;
+  signDoc: (id: string, workerId: string) => void;
+  reviewDoc: (id: string, version: string, reviewDue: string) => void;
   toggleAttendance: (id: string, workerId: string) => void;
   updateTalk: (id: string, patch: Partial<Talk>) => void;
   removeTalk: (id: string) => void;
@@ -306,7 +397,20 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     act(
       (s) => ({
         ...s,
-        projects: [...s.projects, { ...i, id, start: todayISO(), onSite: [] }],
+        projects: [
+          ...s.projects,
+          {
+            ...i,
+            id,
+            start: todayISO(),
+            onSite: [],
+            hours: 0,
+            assembly: "",
+            hospital: "",
+            emergencyContact: "",
+            wardens: "",
+          },
+        ],
       }),
       ev(
         "Projects",
@@ -687,9 +791,9 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         talks: [{ ...i, id, expected, attended: [] }, ...s.talks],
       }),
       ev(
-        "Toolbox",
+        i.kind && i.kind !== "Toolbox talk" ? "Consultation" : "Toolbox",
         i.projectId,
-        `scheduled the toolbox talk ${i.topic}`,
+        `scheduled the ${(i.kind ?? "Toolbox talk").toLowerCase()} ${i.topic}`,
         "Not scheduled",
         i.date,
       ),
@@ -951,6 +1055,340 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
   setWarnDays: (n) =>
     update((s) => ({ ...s, settings: { ...s.settings, warnDays: n } })),
 
+  addPermit: (i) => {
+    const id = `pm-${uid()}`;
+    act(
+      (s) => ({
+        ...s,
+        permits: [
+          {
+            ...i,
+            id,
+            status: "Requested",
+            approver: "",
+            checks: PERMIT_CHECKS[i.kind].map((text, n) => ({
+              id: `c${n}`,
+              text,
+              done: false,
+            })),
+          },
+          ...s.permits,
+        ],
+      }),
+      ev(
+        "Permits",
+        i.projectId,
+        `requested a ${i.kind.toLowerCase()} permit: ${i.title}`,
+        "No permit",
+        "Requested",
+      ),
+    );
+    return id;
+  },
+  toggleCheck: (id, checkId) =>
+    update((s) => ({
+      ...s,
+      permits: patchIn(s.permits, id, (x) => ({
+        ...x,
+        checks: x.checks.map((c) =>
+          c.id === checkId ? { ...c, done: !c.done } : c,
+        ),
+      })),
+    })),
+  setPermitStatus: (id, status) => {
+    const x = current().permits.find((p) => p.id === id);
+    act(
+      (s) => ({
+        ...s,
+        permits: patchIn(s.permits, id, (p) => ({
+          ...p,
+          status,
+          approver: status === "Approved" ? me.name : p.approver,
+        })),
+      }),
+      ev(
+        "Permits",
+        x?.projectId ?? ALL,
+        `${status === "Approved" ? "approved" : status === "Closed" ? "closed out" : status === "Cancelled" ? "cancelled" : "updated"} the permit ${x?.title ?? ""}`.trim(),
+        x?.status ?? "",
+        status,
+      ),
+    );
+  },
+
+  addPlant: (i) =>
+    act(
+      (s) => ({
+        ...s,
+        plant: [
+          {
+            ...i,
+            id: `pl-${uid()}`,
+            lastService: todayISO(),
+            lastPrestart: null,
+            status: "In service",
+            defect: "",
+          },
+          ...s.plant,
+        ],
+      }),
+      ev(
+        "Plant",
+        i.projectId,
+        `added ${i.name} to the plant register`,
+        "Not registered",
+        "In service",
+      ),
+    ),
+  logPrestart: (id) => {
+    const x = current().plant.find((p) => p.id === id);
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          lastPrestart: todayISO(),
+        })),
+      }),
+      ev(
+        "Plant",
+        x?.projectId ?? ALL,
+        `completed the pre-start for ${x?.name ?? "plant"}`,
+        "Not checked",
+        "Checked",
+      ),
+    );
+  },
+  logService: (id, nextService) => {
+    const x = current().plant.find((p) => p.id === id);
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          lastService: todayISO(),
+          nextService,
+        })),
+      }),
+      ev(
+        "Plant",
+        x?.projectId ?? ALL,
+        `recorded a service for ${x?.name ?? "plant"}`,
+        x?.lastService ?? "",
+        todayISO(),
+      ),
+    );
+  },
+  setPlantStatus: (id, status, defect) => {
+    const x = current().plant.find((p) => p.id === id);
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          status,
+          defect: status === "Out of service" ? (defect ?? p.defect) : "",
+        })),
+      }),
+      ev(
+        "Plant",
+        x?.projectId ?? ALL,
+        `moved ${x?.name ?? "plant"} to ${status.toLowerCase()}`,
+        x?.status ?? "",
+        status,
+      ),
+    );
+  },
+  tagPlant: (id, nextDue) => {
+    const x = current().plant.find((p) => p.id === id);
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({ ...p, tagDue: nextDue })),
+      }),
+      ev(
+        "Plant",
+        x?.projectId ?? ALL,
+        `recorded test and tag for ${x?.name ?? "plant"}`,
+        x?.tagDue ?? "Not tagged",
+        nextDue,
+      ),
+    );
+  },
+
+  addChemical: (i) =>
+    act(
+      (s) => ({
+        ...s,
+        chemicals: [
+          { ...i, id: `ch-${uid()}`, status: "In use" },
+          ...s.chemicals,
+        ],
+      }),
+      ev(
+        "Chemicals",
+        i.projectId,
+        `added ${i.name} to the chemicals register`,
+        "Not registered",
+        i.hasSds ? "SDS on file" : "SDS missing",
+      ),
+    ),
+  updateChemical: (id, patch) => {
+    const x = current().chemicals.find((c) => c.id === id);
+    act(
+      (s) => ({
+        ...s,
+        chemicals: patchIn(s.chemicals, id, (c) => ({ ...c, ...patch })),
+      }),
+      ev(
+        "Chemicals",
+        x?.projectId ?? ALL,
+        `updated ${x?.name ?? "a chemical"}`,
+        patch.status ? (x?.status ?? "") : "Previous",
+        patch.status ?? (patch.hasSds ? "SDS on file" : "Updated"),
+      ),
+    );
+  },
+
+  addDrill: (i) =>
+    act(
+      (s) => ({ ...s, drills: [{ ...i, id: `dr-${uid()}` }, ...s.drills] }),
+      ev(
+        "Emergency",
+        i.projectId,
+        `recorded an ${i.kind.toLowerCase()}`,
+        "Not recorded",
+        i.date,
+      ),
+    ),
+  updateEmergency: (projectId, patch) =>
+    act(
+      (s) => ({
+        ...s,
+        projects: patchIn(s.projects, projectId, (p) => ({ ...p, ...patch })),
+      }),
+      ev(
+        "Emergency",
+        projectId,
+        "updated the emergency details",
+        "Previous",
+        "Updated",
+      ),
+    ),
+  setHours: (projectId, hours) =>
+    update((s) => ({
+      ...s,
+      projects: patchIn(s.projects, projectId, (p) => ({ ...p, hours })),
+    })),
+
+  signInVisitor: (i) => {
+    const now = new Date();
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    act(
+      (s) => ({
+        ...s,
+        visitors: [
+          {
+            ...i,
+            id: `v-${uid()}`,
+            inAt: `${todayISO()} ${hhmm}`,
+            outAt: null,
+          },
+          ...s.visitors,
+        ],
+      }),
+      ev(
+        "Visitors",
+        i.projectId,
+        `signed in the visitor ${i.name}`,
+        "Off site",
+        "On site",
+      ),
+    );
+  },
+  signOutVisitor: (id) => {
+    const x = current().visitors.find((v) => v.id === id);
+    const now = new Date();
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    act(
+      (s) => ({
+        ...s,
+        visitors: patchIn(s.visitors, id, (v) => ({
+          ...v,
+          outAt: `${todayISO()} ${hhmm}`,
+        })),
+      }),
+      ev(
+        "Visitors",
+        x?.projectId ?? ALL,
+        `signed out the visitor ${x?.name ?? ""}`.trim(),
+        "On site",
+        "Off site",
+      ),
+    );
+  },
+
+  addDocument: (i) =>
+    act(
+      (s) => ({
+        ...s,
+        docs: [
+          { ...i, id: `dc-${uid()}`, updated: todayISO(), signed: [] },
+          ...s.docs,
+        ],
+      }),
+      ev(
+        "Documents",
+        i.projectId,
+        `added the ${i.category.toLowerCase()} ${i.title}`,
+        "Not on file",
+        `v${i.version}`,
+      ),
+    ),
+  signDoc: (id, workerId) => {
+    const s0 = current();
+    const d = s0.docs.find((x) => x.id === id);
+    act(
+      (s) => ({
+        ...s,
+        docs: patchIn(s.docs, id, (x) =>
+          x.signed.includes(workerId)
+            ? x
+            : { ...x, signed: [...x.signed, workerId] },
+        ),
+      }),
+      ev(
+        "Documents",
+        d?.projectId ?? ALL,
+        `recorded ${workerName(s0, workerId)} reading ${d?.title ?? "a document"}`,
+        "Unsigned",
+        `Signed v${d?.version ?? ""}`,
+      ),
+    );
+  },
+  reviewDoc: (id, version, reviewDue) => {
+    const d = current().docs.find((x) => x.id === id);
+    act(
+      (s) => ({
+        ...s,
+        docs: patchIn(s.docs, id, (x) => ({
+          ...x,
+          version,
+          reviewDue,
+          updated: todayISO(),
+          signed: [],
+        })),
+      }),
+      ev(
+        "Documents",
+        d?.projectId ?? ALL,
+        `issued version ${version} of ${d?.title ?? "a document"}`,
+        `v${d?.version ?? ""}`,
+        `v${version}`,
+      ),
+    );
+  },
+
   resetDemo: () => writeSaved(SEED),
 };
 
@@ -1005,6 +1443,14 @@ export function useScope() {
       swmsIn: inP(s.swms),
       risksIn: inP(s.risks),
       talksIn: inP(s.talks),
+      permitsIn: inP(s.permits),
+      plantIn: inP(s.plant),
+      chemicalsIn: inP(s.chemicals),
+      drillsIn: inP(s.drills),
+      visitorsIn: inP(s.visitors),
+      docsIn: all
+        ? s.docs
+        : s.docs.filter((x) => x.projectId === id || x.projectId === ALL),
       inspectionsIn: inP(s.inspections),
       incidentsIn: inP(s.incidents),
       actionsIn: inP(s.actions),
