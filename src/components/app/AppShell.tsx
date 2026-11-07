@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const inSettings = pathname.startsWith("/dashboard/settings");
 
   const sidebar = (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <Link
         href="/dashboard"
         className="flex h-16 shrink-0 items-center px-5"
@@ -116,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="App"
-        className="mt-4 flex-1 space-y-4 overflow-y-auto px-3 pb-3"
+        className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 pb-3"
       >
         {GROUPS.map((g, gi) => (
           <div key={gi}>
@@ -170,7 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg text-ink lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-screen border-r border-line bg-bg lg:block">
+      <aside className="sticky top-0 hidden h-dvh border-r border-line bg-bg lg:block">
         {sidebar}
       </aside>
 
