@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icons";
 import { useAiContext, VoiceButton } from "@/components/app/ai";
 import { useScope } from "@/components/app/DemoStore";
 import { Markdown } from "@/components/app/Markdown";
+import { Mascot, MascotHead } from "@/components/app/Mascot";
 import { btnDark, btnLight, Pill } from "@/components/app/ui";
 import type { Proposal } from "@/lib/ai-types";
 import {
@@ -205,66 +206,108 @@ export function AssistantView() {
   };
 
   const empty = messages.length === 0;
+  const first = me.name.split(" ")[0];
+
+  const GROUPS = [
+    {
+      label: "Ask about WHS",
+      icon: "shield" as const,
+      list: SUGGESTIONS.safety,
+    },
+    {
+      label: "Ask about your sites",
+      icon: "grid" as const,
+      list: SUGGESTIONS.site,
+    },
+    {
+      label: "Tell me what to log",
+      icon: "plus" as const,
+      list: SUGGESTIONS.act,
+    },
+  ];
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-11rem)] max-w-3xl flex-col">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
+      <div className="mb-5 flex items-center gap-4 rounded-3xl border border-line bg-gradient-to-br from-accent/20 via-accent/[0.07] to-transparent p-4 sm:p-5">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-line sm:h-20 sm:w-20">
+          <Mascot className="h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]" />
+        </span>
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
             Assistant
           </h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            Ask about WHS, or about {s.all ? "every project" : s.scopeLabel}. It
-            can draft changes for you to confirm.
+          <p className="mt-0.5 text-sm text-ink-soft">
+            Your site safety offsider. Reading{" "}
+            <span className="font-semibold text-ink">
+              {s.all ? "every project" : s.scopeLabel}
+            </span>
+            .
+          </p>
+          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft">
+            <span className="h-2 w-2 rounded-full bg-accent" /> Drafts changes.
+            You confirm.
           </p>
         </div>
         {!empty && (
-          <button type="button" onClick={reset} className={btnLight}>
-            <Icon name="plus" className="h-4 w-4" /> New chat
+          <button
+            type="button"
+            onClick={reset}
+            className={`${btnLight} shrink-0`}
+          >
+            <Icon name="plus" className="h-4 w-4" />{" "}
+            <span className="hidden sm:inline">New chat</span>
           </button>
         )}
       </div>
 
       <div className="flex-1 space-y-6 pb-6">
         {empty && (
-          <div className="pt-6">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-ink">
-              <Icon name="sparkle" className="h-6 w-6" />
-            </span>
-            <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight">
-              How can I help on site?
-            </h2>
-            <p className="mt-2 max-w-xl text-ink-soft">
-              I can explain Australian WHS requirements, read your projects,
-              SWMS, risks, tickets and incidents to tell you what needs
-              attention, and draft actions, incident reports, toolbox talks and
-              risks. Nothing changes until you confirm it.
-            </p>
-            {(
-              [
-                ["WHS questions", SUGGESTIONS.safety],
-                ["Your sites", SUGGESTIONS.site],
-                ["Do it for me", SUGGESTIONS.act],
-              ] as const
-            ).map(([label, list]) => (
-              <div key={label} className="mt-6">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
-                  {label}
+          <div className="pt-2">
+            <div className="flex flex-col items-center text-center">
+              <Mascot className="mascot-bob h-44 w-44 sm:h-52 sm:w-52" />
+              <div className="relative mt-2 max-w-md rounded-3xl bg-ink px-6 py-4 text-left text-bg shadow-lg">
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-ink"
+                />
+                <p className="font-display text-xl font-extrabold leading-snug">
+                  G&apos;day {first}. What are we sorting out today?
                 </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {list.map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => void send(q)}
-                      className="rounded-2xl border border-line bg-surface p-4 text-left text-sm font-medium transition-colors hover:border-ink hover:bg-tint/60"
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
+                <p className="mt-1.5 text-sm text-bg/75">
+                  Ask me about Australian WHS, check what needs attention on
+                  site, or just tell me what to log and I&apos;ll draft it for
+                  you.
+                </p>
               </div>
-            ))}
+            </div>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {GROUPS.map((g) => (
+                <section
+                  key={g.label}
+                  className="rounded-3xl border border-line bg-surface p-4"
+                >
+                  <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/25 text-ink">
+                      <Icon name={g.icon} className="h-3.5 w-3.5" />
+                    </span>
+                    {g.label}
+                  </p>
+                  <div className="space-y-2">
+                    {g.list.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => void send(q)}
+                        className="w-full rounded-2xl bg-bg px-3.5 py-3 text-left text-sm font-medium leading-snug transition-colors hover:bg-accent/15"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
         )}
 
@@ -272,22 +315,35 @@ export function AssistantView() {
           if (m.role === "user")
             return (
               <div key={m.id} className="flex justify-end">
-                <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-ink px-4 py-3 text-[15px] leading-relaxed text-bg">
+                <p className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-3 text-[15px] leading-relaxed text-bg shadow-sm">
                   {m.content}
                 </p>
               </div>
             );
           const { text, proposals } = splitReply(m.content);
+          const waiting = busy && i === messages.length - 1 && !text;
           return (
             <div key={m.id} className="flex gap-3">
-              <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-ink">
-                <Icon name="sparkle" className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1 space-y-3 pt-1">
+              <MascotHead className="mt-0.5 h-10 w-10 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-3">
                 {text ? (
-                  <Markdown text={text} />
-                ) : busy && i === messages.length - 1 ? (
-                  <p className="text-sm text-ink-soft">Thinking</p>
+                  <div className="rounded-3xl rounded-tl-lg border border-line bg-surface px-4 py-3.5 shadow-sm">
+                    <Markdown text={text} />
+                  </div>
+                ) : waiting ? (
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-3xl rounded-tl-lg border border-line bg-surface px-4 py-3.5"
+                    role="status"
+                    aria-label="Thinking"
+                  >
+                    {[0, 150, 300].map((d) => (
+                      <span
+                        key={d}
+                        className="h-2 w-2 animate-bounce rounded-full bg-accent"
+                        style={{ animationDelay: `${d}ms` }}
+                      />
+                    ))}
+                  </div>
                 ) : null}
                 {proposals.length > 0 && (
                   <ul className="space-y-2">
@@ -296,9 +352,9 @@ export function AssistantView() {
                       return (
                         <li
                           key={k}
-                          className="rounded-2xl border border-accent/40 bg-accent/[0.07] p-4"
+                          className="overflow-hidden rounded-2xl border border-accent/50 bg-accent/[0.08]"
                         >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent/25 px-4 py-2">
                             <Pill tone="neutral">
                               {p.type === "create_action"
                                 ? "Corrective action"
@@ -312,35 +368,38 @@ export function AssistantView() {
                               {p.project || s.scopeLabel}
                             </span>
                           </div>
-                          <p className="mt-2 text-sm font-semibold">
-                            {p.type === "schedule_talk"
-                              ? p.topic
-                              : p.type === "add_risk"
-                                ? p.hazard
-                                : p.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-ink-soft">
-                            {p.type === "create_action" &&
-                              `Owner ${p.owner || me.name} · due in ${p.days} days`}
-                            {p.type === "report_incident" &&
-                              `${p.incidentType} · ${p.severity} · ${p.location}`}
-                            {p.type === "schedule_talk" && `In ${p.days} days`}
-                            {p.type === "add_risk" &&
-                              `${p.category} · likelihood ${p.likelihood}, consequence ${p.consequence}`}
-                          </p>
-                          <div className="mt-3">
-                            {done ? (
-                              <Pill tone="ok">Added</Pill>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => apply(m, k, p)}
-                                className={`${btnDark} !px-4 !py-1.5 text-xs`}
-                              >
-                                <Icon name="check" className="h-3.5 w-3.5" />{" "}
-                                Confirm and add
-                              </button>
-                            )}
+                          <div className="px-4 py-3">
+                            <p className="text-sm font-semibold">
+                              {p.type === "schedule_talk"
+                                ? p.topic
+                                : p.type === "add_risk"
+                                  ? p.hazard
+                                  : p.title}
+                            </p>
+                            <p className="mt-0.5 text-xs text-ink-soft">
+                              {p.type === "create_action" &&
+                                `Owner ${p.owner || me.name} · due in ${p.days} days`}
+                              {p.type === "report_incident" &&
+                                `${p.incidentType} · ${p.severity} · ${p.location}`}
+                              {p.type === "schedule_talk" &&
+                                `In ${p.days} days`}
+                              {p.type === "add_risk" &&
+                                `${p.category} · likelihood ${p.likelihood}, consequence ${p.consequence}`}
+                            </p>
+                            <div className="mt-3">
+                              {done ? (
+                                <Pill tone="ok">Added</Pill>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => apply(m, k, p)}
+                                  className={`${btnDark} !px-4 !py-1.5 text-xs`}
+                                >
+                                  <Icon name="check" className="h-3.5 w-3.5" />{" "}
+                                  Confirm and add
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </li>
                       );
@@ -353,33 +412,33 @@ export function AssistantView() {
         })}
 
         {problem && (
-          <div
-            role="alert"
-            className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-sm"
-          >
-            <p className="font-semibold">
-              {problem.code === "not_configured"
-                ? "The assistant is not connected yet"
-                : "Something went wrong"}
-            </p>
-            <p className="mt-1 text-ink-soft">
-              {problem.code === "not_configured"
-                ? "Ask whoever manages WHSCOMPLY to switch it on."
-                : problem.text}
-            </p>
-            {problem.code === "not_configured" && (
-              <p className="mt-2 text-xs text-ink-soft">
-                For whoever sets this up: add{" "}
-                <code className="rounded bg-tint px-1 py-0.5 font-mono">
-                  ANTHROPIC_API_KEY=...
-                </code>{" "}
-                to{" "}
-                <code className="rounded bg-tint px-1 py-0.5 font-mono">
-                  .env.local
-                </code>{" "}
-                and restart the server.
+          <div role="alert" className="flex gap-3">
+            <MascotHead className="mt-0.5 h-10 w-10 shrink-0" />
+            <div className="min-w-0 flex-1 rounded-3xl rounded-tl-lg border border-accent/50 bg-accent/10 px-4 py-3.5 text-sm">
+              <p className="font-semibold">
+                {problem.code === "not_configured"
+                  ? "I'm not connected yet"
+                  : "Something went wrong"}
               </p>
-            )}
+              <p className="mt-1 text-ink-soft">
+                {problem.code === "not_configured"
+                  ? "Ask whoever manages WHSCOMPLY to switch me on."
+                  : problem.text}
+              </p>
+              {problem.code === "not_configured" && (
+                <p className="mt-2 text-xs text-ink-soft">
+                  For whoever sets this up: add{" "}
+                  <code className="rounded bg-tint px-1 py-0.5 font-mono">
+                    ANTHROPIC_API_KEY=...
+                  </code>{" "}
+                  to{" "}
+                  <code className="rounded bg-tint px-1 py-0.5 font-mono">
+                    .env.local
+                  </code>{" "}
+                  and restart the server.
+                </p>
+              )}
+            </div>
           </div>
         )}
         <div ref={bottom} />
@@ -391,7 +450,7 @@ export function AssistantView() {
             e.preventDefault();
             void send(input);
           }}
-          className="flex items-end gap-2 rounded-3xl border border-line bg-surface p-2 shadow-sm focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
+          className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-surface p-2 shadow-[0_12px_40px_-16px_oklch(0.23_0.02_255/0.35)] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
         >
           <label className="min-w-0 flex-1">
             <span className="sr-only">Ask the assistant</span>
@@ -434,16 +493,15 @@ export function AssistantView() {
               type="submit"
               aria-label="Send"
               disabled={!input.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg disabled:opacity-30"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-30"
             >
               <Icon name="arrow" className="h-4 w-4 -rotate-90" />
             </button>
           )}
         </form>
         <p className="mt-2 text-center text-[11px] text-ink-soft">
-          The assistant can make mistakes. WHS answers are general information,
-          not legal advice. Your site data for the selected project is sent with
-          each question.
+          I can make mistakes. WHS answers are general information, not legal
+          advice. Data for the selected project is sent with each question.
         </p>
       </div>
     </div>
