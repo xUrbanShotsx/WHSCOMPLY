@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Icon } from "@/components/Icons";
 import { PageHeader } from "@/components/Sections";
 import { breadcrumbs, JsonLd } from "@/lib/jsonld";
@@ -45,7 +46,19 @@ export default function Demo() {
             </li>
           ))}
         </ul>
-        <DemoForm />
+        <div>
+          <DemoForm />
+          <p className="mt-5 text-sm text-ink-soft">
+            Want to look first?{" "}
+            <Link
+              href="/dashboard"
+              className="font-semibold text-ink underline"
+            >
+              Open the demo dashboard
+            </Link>{" "}
+            with sample projects, SWMS, risks and incidents.
+          </p>
+        </div>
       </section>
     </>
   );

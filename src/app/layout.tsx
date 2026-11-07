@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, IBM_Plex_Mono } from "next/font/google";
 import { Motion } from "@/components/Motion";
+import { Suspense } from "react";
+import { SiteChrome } from "@/components/SiteChrome";
 import { Navbar } from "@/components/Navbar";
 import Link from "next/link";
 import { states, topics } from "@/lib/content";
@@ -72,6 +74,7 @@ const links = [
   ["Pricing", "/pricing"],
   ["About", "/about"],
   ["Resources", "/resources"],
+  ["Demo dashboard", "/dashboard"],
   ["Login", "https://auth.briesa.com/login"],
 ];
 
@@ -114,80 +117,89 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             ],
           }}
         />
-        <Motion />
-        <Navbar />
-        <main className="flex-1 pt-20 sm:pt-24">{children}</main>
-        <footer className="mt-28 overflow-hidden bg-ink text-bg">
-          <div className="mx-auto max-w-6xl px-5 pt-16 sm:px-8">
-            <div className="flex flex-col justify-between gap-10 md:flex-row">
-              <p className="max-w-sm font-display text-2xl font-semibold leading-snug">
-                Everyone on site, signed on and accounted for.
-              </p>
-              <ul className="grid grid-cols-2 gap-x-10 gap-y-3 text-sm">
-                {links.map(([label, href]) => (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      className="text-bg/75 transition-colors hover:text-accent"
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <nav
-              aria-label="Footer"
-              className="mt-14 grid gap-10 border-t border-bg/15 pt-10 text-sm sm:grid-cols-2"
-            >
-              <div>
-                <p className="font-mono text-xs uppercase tracking-widest text-bg/60">
-                  Solutions
-                </p>
-                <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {topics.map((t) => (
-                    <li key={t.slug}>
-                      <Link
-                        href={`/solutions/${t.slug}`}
-                        className="text-bg/75 transition-colors hover:text-accent"
-                      >
-                        {t.nav}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-mono text-xs uppercase tracking-widest text-bg/60">
-                  <Link href="/states" className="hover:text-accent">
-                    By state
-                  </Link>
-                </p>
-                <ul className="mt-4 grid grid-cols-2 gap-2">
-                  {states.map((st) => (
-                    <li key={st.slug}>
-                      <Link
-                        href={`/states/${st.slug}`}
-                        className="text-bg/75 transition-colors hover:text-accent"
-                      >
-                        {st.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </nav>
-            <p
-              aria-hidden="true"
-              className="mt-14 select-none font-display text-[clamp(3rem,14vw,12rem)] font-extrabold leading-[0.8] tracking-tighter text-bg/10"
-            >
-              WHSCOMPLY
-            </p>
-          </div>
-          <div className="border-t border-bg/15 py-5 text-center font-mono text-xs uppercase tracking-widest text-bg/60">
-            © 2026 WHSCOMPLY. Powered by Briesa.
-          </div>
-        </footer>
+        <Suspense fallback={null}>
+          <Motion />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SiteChrome
+            nav={<Navbar />}
+            footer={
+              <footer className="mt-28 overflow-hidden bg-ink text-bg">
+                <div className="mx-auto max-w-6xl px-5 pt-16 sm:px-8">
+                  <div className="flex flex-col justify-between gap-10 md:flex-row">
+                    <p className="max-w-sm font-display text-2xl font-semibold leading-snug">
+                      Everyone on site, signed on and accounted for.
+                    </p>
+                    <ul className="grid grid-cols-2 gap-x-10 gap-y-3 text-sm">
+                      {links.map(([label, href]) => (
+                        <li key={href}>
+                          <Link
+                            href={href}
+                            className="text-bg/75 transition-colors hover:text-accent"
+                          >
+                            {label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <nav
+                    aria-label="Footer"
+                    className="mt-14 grid gap-10 border-t border-bg/15 pt-10 text-sm sm:grid-cols-2"
+                  >
+                    <div>
+                      <p className="font-mono text-xs uppercase tracking-widest text-bg/60">
+                        Solutions
+                      </p>
+                      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {topics.map((t) => (
+                          <li key={t.slug}>
+                            <Link
+                              href={`/solutions/${t.slug}`}
+                              className="text-bg/75 transition-colors hover:text-accent"
+                            >
+                              {t.nav}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs uppercase tracking-widest text-bg/60">
+                        <Link href="/states" className="hover:text-accent">
+                          By state
+                        </Link>
+                      </p>
+                      <ul className="mt-4 grid grid-cols-2 gap-2">
+                        {states.map((st) => (
+                          <li key={st.slug}>
+                            <Link
+                              href={`/states/${st.slug}`}
+                              className="text-bg/75 transition-colors hover:text-accent"
+                            >
+                              {st.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </nav>
+                  <p
+                    aria-hidden="true"
+                    className="mt-14 select-none font-display text-[clamp(3rem,14vw,12rem)] font-extrabold leading-[0.8] tracking-tighter text-bg/10"
+                  >
+                    WHSCOMPLY
+                  </p>
+                </div>
+                <div className="border-t border-bg/15 py-5 text-center font-mono text-xs uppercase tracking-widest text-bg/60">
+                  © 2026 WHSCOMPLY. Powered by Briesa.
+                </div>
+              </footer>
+            }
+          >
+            {children}
+          </SiteChrome>
+        </Suspense>
       </body>
     </html>
   );
