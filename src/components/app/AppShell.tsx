@@ -17,7 +17,7 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "grid" },
-      { href: "/dashboard/assistant", label: "Assistant", icon: "sparkle" },
+      { href: "/dashboard/assistant", label: "Assistance", icon: "sparkle" },
       { href: "/dashboard/ai", label: "AI toolkit", icon: "list" },
       { href: "/dashboard/reports", label: "Reports", icon: "scale" },
     ],
@@ -130,7 +130,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <div className="mx-3 mt-3 shrink-0 md:hidden">
-        <GlobalSearch inline />
+        <GlobalSearch
+          tone="tint"
+          placeholder="Search"
+          onNavigate={() => setOpen(false)}
+        />
       </div>
 
       <nav
@@ -219,7 +223,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Icon name="menu" className="h-6 w-6" />
           </button>
           <ProjectSwitcher />
-          <GlobalSearch />
+          <GlobalSearch className="hidden max-w-md flex-1 md:block" />
           <span className="ml-auto flex items-center gap-2 sm:gap-3">
             <span className="hidden rounded-full bg-tint px-3 py-1 text-[11px] font-semibold text-ink-soft xl:inline">
               Sample data

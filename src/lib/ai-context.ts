@@ -228,20 +228,58 @@ export function buildContext(c: ContextInput): string {
   return text.length > 38_000 ? `${text.slice(0, 38_000)}\n[truncated]` : text;
 }
 
-export const SUGGESTIONS = {
-  safety: [
-    "What does a SWMS need to contain for work at height?",
-    "Is a near miss with a dropped object notifiable?",
-    "What is the hierarchy of controls, with a site example?",
-  ],
-  site: [
-    "What needs my attention today?",
-    "Which workers have tickets expiring, and on which projects?",
-    "Write me a summary of this week for the client",
-  ],
-  act: [
-    "Raise an action to replace the damaged leads and set it due Friday",
-    "Schedule a toolbox talk on silica dust for this project",
-    "Log a near miss: a pallet of bricks slipped off the hoist at Level 2",
-  ],
-};
+export type Suggestion = { title: string; prompt: string };
+
+/** Starting points on the Assistance page: each one is a job for the agent, not just a question. */
+export const SUGGESTIONS: { label: string; items: Suggestion[] }[] = [
+  {
+    label: "Catch up",
+    items: [
+      {
+        title: "What needs my attention?",
+        prompt:
+          "Go through all my projects and tell me what needs attention today, most urgent first: unsigned SWMS, expiring tickets, overdue actions, open incidents and anything out of service.",
+      },
+      {
+        title: "Sweep for overdue items",
+        prompt:
+          "Sweep every project for anything overdue and raise the follow-up actions and notices needed. Show me each change to approve.",
+      },
+    ],
+  },
+  {
+    label: "Get it done",
+    items: [
+      {
+        title: "Fix a hazard",
+        prompt:
+          "A lead is damaged near the Level 2 stairs at 14 Marsh Ave. Log the hazard, raise an action to replace it by Friday and post a safety notice to the crew.",
+      },
+      {
+        title: "Set up a toolbox talk",
+        prompt:
+          "Schedule a toolbox talk on silica dust for 14 Marsh Ave next week and write the key points for the foreman.",
+      },
+      {
+        title: "Log a near miss",
+        prompt:
+          "Log a near miss: a pallet of bricks slipped off the hoist at Level 2 this morning. Nobody was under it. Raise the first corrective actions.",
+      },
+    ],
+  },
+  {
+    label: "Report and ask",
+    items: [
+      {
+        title: "Weekly summary for the client",
+        prompt:
+          "Look at the safety numbers and this week's activity for 14 Marsh Ave and write a short summary I can send to the client.",
+      },
+      {
+        title: "Ask about the rules",
+        prompt:
+          "What does a SWMS need to contain for work at height, and is a near miss from a dropped object notifiable?",
+      },
+    ],
+  },
+];

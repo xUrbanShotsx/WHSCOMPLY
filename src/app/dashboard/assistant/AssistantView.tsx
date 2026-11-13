@@ -7,6 +7,7 @@ import { useAiContext } from "@/components/app/ai";
 import { useScope } from "@/components/app/DemoStore";
 import { Markdown } from "@/components/app/Markdown";
 import { Mascot } from "@/components/app/Mascot";
+import { SUGGESTIONS } from "@/lib/ai-context";
 import { btnLight } from "@/components/app/ui";
 import { toolByName } from "@/lib/agent-tools";
 import { describeTool, executeTool, type AppStore, type Input } from "./agent";
@@ -416,6 +417,54 @@ export function AssistantView() {
       )}
 
       <div className="flex-1 space-y-7 pb-6">
+        {empty && (
+          <div className="pt-4 sm:pt-10">
+            <div className="flex items-center gap-3">
+              <Mascot className="mascot-bob h-14 w-14 shrink-0 sm:hidden" />
+              <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+                Assistance
+              </h1>
+            </div>
+            <p className="mt-3 max-w-xl text-ink-soft">
+              Ask a question, or tell me what to get done. I can look across
+              your projects, SWMS, tickets, permits, plant, incidents and
+              programme, and make changes for you. You approve each change
+              before it happens.
+            </p>
+
+            <div className="mt-8 space-y-6">
+              {SUGGESTIONS.map((g) => (
+                <div key={g.label}>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
+                    {g.label}
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {g.items.map((sg) => (
+                      <button
+                        key={sg.title}
+                        type="button"
+                        onClick={() => void send(sg.prompt)}
+                        className="group rounded-2xl border border-line bg-surface p-4 text-left transition-colors hover:border-ink hover:bg-tint/60"
+                      >
+                        <span className="flex items-center justify-between gap-2 text-sm font-bold">
+                          {sg.title}
+                          <Icon
+                            name="arrow"
+                            className="h-4 w-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5"
+                          />
+                        </span>
+                        <span className="mt-1 line-clamp-2 block text-[13px] leading-snug text-ink-soft">
+                          {sg.prompt}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((m, i) =>
           m.role === "user" ? (
             <div key={m.id} className="flex justify-end">
@@ -474,20 +523,6 @@ export function AssistantView() {
             className={`mascot-bob hidden h-24 w-24 shrink-0 sm:block ${busy ? "opacity-90" : ""}`}
           />
           <div className="min-w-0 flex-1">
-            {empty && (
-              <div className="mb-3 flex items-end gap-3">
-                <Mascot className="mascot-bob h-20 w-20 shrink-0 sm:hidden" />
-                <div className="relative max-w-md rounded-3xl rounded-bl-lg bg-ink px-5 py-3 text-bg shadow-lg">
-                  <p className="font-display text-lg font-extrabold leading-snug">
-                    G&apos;day. What are we sorting out today?
-                  </p>
-                  <p className="mt-1 text-sm text-bg/75">
-                    Ask about WHS, or tell me what to get done across your
-                    sites. I make the changes. You approve each one.
-                  </p>
-                </div>
-              </div>
-            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
