@@ -1,61 +1,163 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/Icons";
-import { useAiContext, VoiceButton } from "@/components/app/ai";
+import { useAiContext } from "@/components/app/ai";
 import { useScope } from "@/components/app/DemoStore";
 import { Markdown } from "@/components/app/Markdown";
-import { Mascot, MascotHead } from "@/components/app/Mascot";
-import { btnDark, btnLight, Pill } from "@/components/app/ui";
-import type { Proposal } from "@/lib/ai-types";
+import { Mascot } from "@/components/app/Mascot";
+import { btnLight } from "@/components/app/ui";
+import { toolByName } from "@/lib/agent-tools";
+import { describeTool, executeTool, type AppStore, type Input } from "./agent";
 import {
-  addDays,
-  me,
-  RISK_CATEGORIES,
-  type IncidentType,
-  type RiskLevel,
-} from "@/lib/data";
-import { todayISO } from "@/lib/format";
-import {
+  isRunning,
+  abortRun,
+  readAskFirst,
+  serverAsk,
+  setCtrl,
   readChat,
   serverChat,
+  serverRunning,
+  setRunning,
   subscribeChat,
+  writeAskFirst,
   writeChat,
   type ChatMessage,
+  type Part,
+  type ToolPart,
 } from "./chatStore";
-import { splitReply } from "./proposals";
+import { demoEvents } from "./demo";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const MAX_STEPS = 12;
 
-const TYPES = [
-  "Near miss",
-  "Hazard",
-  "First aid",
-  "Injury",
-  "Property damage",
-  "Dangerous incident",
-];
-const LEVELS = ["Low", "Medium", "High", "Extreme"];
-const near = (v: string, list: string[], d: string) =>
-  list.find((x) => x.toLowerCase() === v.toLowerCase()) ?? d;
-const clamp = (n: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, Math.round(Number(n) || lo)));
+/* ---------- state that outlives this page, so a run keeps going if you click around ---------- */
+
+let latestStore: AppStore | null = null;
+let latestContext: () => string = () => "";
+const approvals = new Map<string, (ok: boolean) => void>();
+
+type Block = { type: string; [k: string]: unknown };
+type Api = { role: "user" | "assistant"; content: string | Block[] };
+export type StreamEvent =
+  | { t: "text"; d: string }
+  | { t: "final"; stop: string | null; content: Block[] }
+  | { t: "error"; message: string };
+
+function patchPart(id: string, patch: Partial<ToolPart>) {
+  writeChat(
+    readChat().map((m) => ({
+      ...m,
+      parts: m.parts.map((p) =>
+        p.type === "tool" && p.id === id ? { ...p, ...patch } : p,
+      ),
+    })),
+  );
+}
+
+function decide(id: string, ok: boolean) {
+  const fn = approvals.get(id);
+  if (!fn) return;
+  approvals.delete(id);
+  patchPart(id, { status: ok ? "running" : "declined" });
+  fn(ok);
+}
+
+/** Earlier turns go back to the model as plain text plus a note of what was done. */
+function flatten(msgs: ChatMessage[]): Api[] {
+  return msgs.map((m) => {
+    const text = m.parts
+      .filter((p): p is Extract<Part, { type: "text" }> => p.type === "text")
+      .map((p) => p.text)
+      .join("\n\n")
+      .trim();
+    if (m.role === "user") return { role: "user", content: text || "(empty)" };
+    const acts = m.parts
+      .filter(
+        (p): p is ToolPart =>
+          p.type === "tool" && p.write && p.status === "done",
+      )
+      .map((p) => `${p.title}${p.detail ? `: ${p.detail}` : ""}`);
+    const content =
+      [
+        text,
+        acts.length ? `[Changes made in this reply: ${acts.join("; ")}]` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n") || "(no reply)";
+    return { role: "assistant", content };
+  });
+}
+
+async function* readStream(res: Response): AsyncGenerator<StreamEvent> {
+  const reader = res.body!.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line) continue;
+      try {
+        yield JSON.parse(line) as StreamEvent;
+      } catch {
+        // ignore a damaged line
+      }
+    }
+  }
+}
 
 export function AssistantView() {
-  const s = useScope();
+  const store = useScope();
   const context = useAiContext();
   const messages = useSyncExternalStore(subscribeChat, readChat, serverChat);
+  const busy = useSyncExternalStore(subscribeChat, isRunning, serverRunning);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
+  const askFirst = useSyncExternalStore(subscribeChat, readAskFirst, serverAsk);
+  const [demo, setDemo] = useState(false);
   const [problem, setProblem] = useState<{ code: string; text: string } | null>(
     null,
   );
-  const abort = useRef<AbortController | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    latestStore = store;
+    latestContext = context;
+  }, [store, context]);
+
+  useEffect(() => {
+    // anything still waiting or running when nothing is actually running was cut off
+    if (!isRunning()) {
+      const stale = readChat().some((m) =>
+        m.parts.some(
+          (p) =>
+            p.type === "tool" &&
+            (p.status === "pending" || p.status === "running"),
+        ),
+      );
+      if (stale)
+        writeChat(
+          readChat().map((m) => ({
+            ...m,
+            parts: m.parts.map((p) =>
+              p.type === "tool" &&
+              (p.status === "pending" || p.status === "running")
+                ? { ...p, status: "cancelled" as const }
+                : p,
+            ),
+          })),
+        );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (messages.length) bottom.current?.scrollIntoView({ block: "end" });
   }, [messages, busy]);
 
   const send = async (text: string) => {
@@ -63,289 +165,304 @@ export function AssistantView() {
     if (!q || busy) return;
     setProblem(null);
     setInput("");
-    const history: ChatMessage[] = [
+    if (box.current) box.current.style.height = "auto";
+
+    const ask = askFirst;
+    const prior = flatten(readChat());
+    const botId = uid();
+    writeChat([
       ...readChat(),
-      { id: uid(), role: "user", content: q },
-    ];
-    const reply: ChatMessage = { id: uid(), role: "assistant", content: "" };
-    writeChat([...history, reply]);
-    setBusy(true);
+      { id: uid(), role: "user", parts: [{ type: "text", text: q }] },
+      { id: botId, role: "assistant", parts: [] },
+    ]);
     const ctrl = new AbortController();
-    abort.current = ctrl;
+    setCtrl(ctrl);
+    setRunning(true);
+
+    const patchBot = (fn: (parts: Part[]) => Part[]) =>
+      writeChat(
+        readChat().map((m) =>
+          m.id === botId ? { ...m, parts: fn(m.parts) } : m,
+        ),
+      );
+    const addText = (d: string) =>
+      patchBot((parts) => {
+        const last = parts[parts.length - 1];
+        return last && last.type === "text"
+          ? [...parts.slice(0, -1), { type: "text", text: last.text + d }]
+          : [...parts, { type: "text", text: d }];
+      });
+    const dropIfEmpty = () => {
+      const bot = readChat().find((m) => m.id === botId);
+      if (bot && bot.parts.length === 0)
+        writeChat(readChat().filter((m) => m.id !== botId));
+    };
+
+    const api: Api[] = [...prior, { role: "user", content: q }];
+    let useDemo = false;
+
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: ctrl.signal,
-        body: JSON.stringify({
-          messages: history.map(({ role, content }) => ({ role, content })),
-          context: context(),
-        }),
-      });
-      if (!res.ok || !res.body) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          message?: string;
-        };
-        writeChat(history);
-        setProblem({
-          code: data.error ?? "error",
-          text: data.message ?? "The assistant could not answer. Try again.",
+      for (let step = 0; step < MAX_STEPS; step++) {
+        let events: AsyncGenerator<StreamEvent> | AsyncIterable<StreamEvent>;
+        if (useDemo) {
+          events = demoEvents(step, latestStore!, ctrl.signal);
+        } else {
+          const res = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: ctrl.signal,
+            body: JSON.stringify({
+              messages: api,
+              context: latestContext(),
+            }),
+          });
+          if (!res.ok || !res.body) {
+            const data = (await res.json().catch(() => ({}))) as {
+              error?: string;
+              message?: string;
+            };
+            if (data.error === "not_configured") {
+              // not connected: show the same experience with a scripted run, using the real actions
+              useDemo = true;
+              setDemo(true);
+              step = -1;
+              continue;
+            }
+            dropIfEmpty();
+            setProblem({
+              code: data.error ?? "error",
+              text:
+                data.message ?? "The assistant could not answer. Try again.",
+            });
+            return;
+          }
+          events = readStream(res);
+        }
+
+        let final: Extract<StreamEvent, { t: "final" }> | null = null;
+        for await (const ev of events) {
+          if (ev.t === "text") addText(ev.d);
+          else if (ev.t === "final") final = ev;
+          else if (ev.t === "error") throw new Error(ev.message);
+        }
+        if (!final) throw new Error("The reply was cut off. Try again.");
+
+        api.push({ role: "assistant", content: final.content });
+        const uses = final.content.filter(
+          (b): b is Block & { id: string; name: string; input: Input } =>
+            b.type === "tool_use",
+        );
+
+        if (final.stop !== "tool_use" || !uses.length) {
+          if (final.stop === "refusal")
+            addText("\n\nI can't help with that request.");
+          if (final.stop === "max_tokens")
+            addText("\n\n(That reply was cut short. Ask me to continue.)");
+          break;
+        }
+
+        const toolParts: ToolPart[] = uses.map((u) => {
+          const d = describeTool(u.name, u.input, latestStore!);
+          const write = !!toolByName(u.name)?.write;
+          return {
+            type: "tool",
+            id: u.id,
+            name: u.name,
+            input: u.input,
+            write,
+            status: write && ask ? "pending" : "running",
+            title: d.title,
+            detail: d.detail,
+          };
         });
-        return;
+        patchBot((parts) => [...parts, ...toolParts]);
+
+        // every change in the batch can be approved or skipped straight away, in any order
+        const decisions = new Map<string, Promise<boolean>>();
+        for (const part of toolParts)
+          if (part.status === "pending")
+            decisions.set(
+              part.id,
+              new Promise<boolean>((resolve) => {
+                approvals.set(part.id, resolve);
+                ctrl.signal.addEventListener("abort", () => {
+                  approvals.delete(part.id);
+                  resolve(false);
+                });
+              }),
+            );
+
+        const results: Block[] = [];
+        for (const part of toolParts) {
+          if (ctrl.signal.aborted) {
+            patchPart(part.id, { status: "cancelled" });
+            results.push({
+              type: "tool_result",
+              tool_use_id: part.id,
+              content: "Cancelled by the user.",
+              is_error: true,
+            });
+            continue;
+          }
+          if (part.status === "pending") {
+            const ok = await decisions.get(part.id)!;
+            if (!ok) {
+              if (ctrl.signal.aborted)
+                patchPart(part.id, { status: "cancelled" });
+              results.push({
+                type: "tool_result",
+                tool_use_id: part.id,
+                content: ctrl.signal.aborted
+                  ? "Cancelled by the user."
+                  : "The user declined this action. Do not retry it. Ask what they would prefer.",
+                is_error: true,
+              });
+              continue;
+            }
+          }
+          const out = await executeTool(part.name, part.input, latestStore!);
+          patchPart(part.id, {
+            status: out.ok ? "done" : "error",
+            outcome: out.outcome ?? (out.ok ? undefined : out.text),
+            link: out.link,
+          });
+          results.push({
+            type: "tool_result",
+            tool_use_id: part.id,
+            content: out.text,
+            ...(out.ok ? {} : { is_error: true }),
+          });
+        }
+        api.push({ role: "user", content: results });
+        if (ctrl.signal.aborted) break;
       }
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let acc = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += dec.decode(value, { stream: true });
-        writeChat([...history, { ...reply, content: acc }]);
-      }
-      if (!acc.trim())
-        writeChat([
-          ...history,
-          {
-            ...reply,
-            content: "I did not get an answer back. Try asking again.",
-          },
-        ]);
     } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-      writeChat(history);
-      setProblem({
-        code: "network",
-        text: "Could not reach the assistant. Check your connection and try again.",
-      });
+      if ((err as Error).name !== "AbortError") {
+        dropIfEmpty();
+        setProblem({
+          code: "error",
+          text:
+            err instanceof TypeError
+              ? "Could not reach the assistant. Check your connection and try again."
+              : (err as Error).message || "Something went wrong. Try again.",
+        });
+      }
     } finally {
-      setBusy(false);
-      abort.current = null;
+      // never leave a step spinning
+      writeChat(
+        readChat().map((m) =>
+          m.id !== botId
+            ? m
+            : {
+                ...m,
+                parts: m.parts.map((p) =>
+                  p.type === "tool" &&
+                  (p.status === "running" || p.status === "pending")
+                    ? { ...p, status: "cancelled" as const }
+                    : p,
+                ),
+              },
+        ),
+      );
+      approvals.clear();
+      setCtrl(null);
+      setRunning(false);
     }
   };
 
+  const stop = () => abortRun();
   const reset = () => {
-    abort.current?.abort();
+    abortRun();
     writeChat([]);
     setProblem(null);
-    setBusy(false);
+    setDemo(false);
     box.current?.focus();
   };
-
-  const projectId = (name: string) => {
-    const n = name.trim().toLowerCase();
-    return (
-      s.projects.find((p) => p.name.toLowerCase() === n)?.id ??
-      s.projects.find(
-        (p) =>
-          n &&
-          (p.name.toLowerCase().includes(n) ||
-            n.includes(p.name.toLowerCase())),
-      )?.id ??
-      (s.all ? s.projects[0]?.id : s.scopeId) ??
-      ""
-    );
-  };
-
-  const apply = (msg: ChatMessage, i: number, p: Proposal) => {
-    const pid = projectId(p.project);
-    if (!pid) return;
-    if (p.type === "create_action")
-      s.addAction({
-        projectId: pid,
-        title: p.title,
-        source: "Manual",
-        sourceLabel: "Proposed by the Assistant",
-        owner: p.owner || me.name,
-        due: addDays(clamp(p.days, 0, 180)),
-      });
-    else if (p.type === "report_incident")
-      s.reportIncident({
-        projectId: pid,
-        type: near(p.incidentType, TYPES, "Near miss") as IncidentType,
-        title: p.title,
-        date: todayISO(),
-        time: new Date().toTimeString().slice(0, 5),
-        location: p.location || "Not stated",
-        reporter: me.name,
-        people: "",
-        description: p.description,
-        severity: near(p.severity, LEVELS, "Medium") as RiskLevel,
-      });
-    else if (p.type === "schedule_talk")
-      s.addTalk({
-        projectId: pid,
-        topic: p.topic,
-        date: addDays(clamp(p.days, 0, 60)),
-        presenter: me.name,
-        notes: p.notes,
-      });
-    else {
-      const l = clamp(p.likelihood, 1, 5);
-      const c = clamp(p.consequence, 1, 5);
-      s.addRisk({
-        projectId: pid,
-        hazard: p.hazard,
-        category: near(p.category, RISK_CATEGORIES, "Other"),
-        likelihood: l,
-        consequence: c,
-        controls: p.controls,
-        resL: Math.max(1, l - 1),
-        resC: c,
-        owner: me.name,
-        review: addDays(30),
-        status: "Open",
-      });
-    }
-    writeChat(
-      readChat().map((m) =>
-        m.id === msg.id ? { ...m, applied: [...(m.applied ?? []), i] } : m,
-      ),
-    );
+  const toggleAsk = () => {
+    writeAskFirst(!askFirst);
   };
 
   const empty = messages.length === 0;
-  const first = me.name.split(" ")[0];
+  const last = messages[messages.length - 1];
+  const waiting =
+    last?.role === "assistant"
+      ? last.parts.filter(
+          (p): p is ToolPart => p.type === "tool" && p.status === "pending",
+        )
+      : [];
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-11rem)] max-w-3xl flex-col">
+    <div className="mx-auto flex min-h-[calc(100dvh-11rem)] max-w-3xl flex-col">
       {!empty && (
-        <div className="mb-4 flex justify-end">
-          <button type="button" onClick={reset} className={btnLight}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <span className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="truncate rounded-full bg-tint px-3 py-1 text-[11px] font-semibold text-ink-soft">
+              Reading {store.all ? "every project" : store.scopeLabel}
+            </span>
+            {demo && (
+              <span className="rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold">
+                Demo mode: scripted, the AI is not connected
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={reset}
+            className={`${btnLight} shrink-0`}
+          >
             <Icon name="plus" className="h-4 w-4" /> New chat
           </button>
         </div>
       )}
 
-      <div className="flex-1 space-y-6 pb-6">
-        {messages.map((m, i) => {
-          if (m.role === "user")
-            return (
-              <div key={m.id} className="flex justify-end">
-                <p className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-3 text-[15px] leading-relaxed text-bg shadow-sm">
-                  {m.content}
-                </p>
-              </div>
-            );
-          const { text, proposals } = splitReply(m.content);
-          const waiting = busy && i === messages.length - 1 && !text;
-          return (
-            <div key={m.id} className="flex gap-3">
-              <MascotHead className="mt-0.5 h-10 w-10 shrink-0" />
-              <div className="min-w-0 flex-1 space-y-3">
-                {text ? (
-                  <div className="rounded-3xl rounded-tl-lg border border-line bg-surface px-4 py-3.5 shadow-sm">
-                    <Markdown text={text} />
-                  </div>
-                ) : waiting ? (
-                  <div
-                    className="inline-flex items-center gap-1.5 rounded-3xl rounded-tl-lg border border-line bg-surface px-4 py-3.5"
-                    role="status"
-                    aria-label="Thinking"
-                  >
-                    {[0, 150, 300].map((d) => (
-                      <span
-                        key={d}
-                        className="h-2 w-2 animate-bounce rounded-full bg-accent"
-                        style={{ animationDelay: `${d}ms` }}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-                {proposals.length > 0 && (
-                  <ul className="space-y-2">
-                    {proposals.map((p, k) => {
-                      const done = m.applied?.includes(k);
-                      return (
-                        <li
-                          key={k}
-                          className="overflow-hidden rounded-2xl border border-accent/50 bg-accent/[0.08]"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent/25 px-4 py-2">
-                            <Pill tone="neutral">
-                              {p.type === "create_action"
-                                ? "Corrective action"
-                                : p.type === "report_incident"
-                                  ? "Incident report"
-                                  : p.type === "schedule_talk"
-                                    ? "Toolbox talk"
-                                    : "Risk register"}
-                            </Pill>
-                            <span className="text-xs text-ink-soft">
-                              {p.project || s.scopeLabel}
-                            </span>
-                          </div>
-                          <div className="px-4 py-3">
-                            <p className="text-sm font-semibold">
-                              {p.type === "schedule_talk"
-                                ? p.topic
-                                : p.type === "add_risk"
-                                  ? p.hazard
-                                  : p.title}
-                            </p>
-                            <p className="mt-0.5 text-xs text-ink-soft">
-                              {p.type === "create_action" &&
-                                `Owner ${p.owner || me.name} · due in ${p.days} days`}
-                              {p.type === "report_incident" &&
-                                `${p.incidentType} · ${p.severity} · ${p.location}`}
-                              {p.type === "schedule_talk" &&
-                                `In ${p.days} days`}
-                              {p.type === "add_risk" &&
-                                `${p.category} · likelihood ${p.likelihood}, consequence ${p.consequence}`}
-                            </p>
-                            <div className="mt-3">
-                              {done ? (
-                                <Pill tone="ok">Added</Pill>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => apply(m, k, p)}
-                                  className={`${btnDark} !px-4 !py-1.5 text-xs`}
-                                >
-                                  <Icon name="check" className="h-3.5 w-3.5" />{" "}
-                                  Confirm and add
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
+      <div className="flex-1 space-y-7 pb-6">
+        {messages.map((m, i) =>
+          m.role === "user" ? (
+            <div key={m.id} className="flex justify-end">
+              <p className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-3 text-[15px] leading-relaxed text-bg shadow-sm">
+                {m.parts[0]?.type === "text" ? m.parts[0].text : ""}
+              </p>
             </div>
-          );
-        })}
+          ) : (
+            <Reply
+              key={m.id}
+              parts={m.parts}
+              working={busy && i === messages.length - 1}
+            />
+          ),
+        )}
+
+        {waiting.length > 1 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+            <span className="font-semibold">
+              {waiting.length} changes are waiting for you.
+            </span>
+            <span className="ml-auto flex gap-2">
+              <button
+                type="button"
+                onClick={() => waiting.forEach((p) => decide(p.id, true))}
+                className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-bg hover:bg-ink/85"
+              >
+                Approve all
+              </button>
+              <button
+                type="button"
+                onClick={() => waiting.forEach((p) => decide(p.id, false))}
+                className="rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-tint"
+              >
+                Skip all
+              </button>
+            </span>
+          </div>
+        )}
 
         {problem && (
-          <div role="alert" className="flex gap-3">
-            <MascotHead className="mt-0.5 h-10 w-10 shrink-0" />
-            <div className="min-w-0 flex-1 rounded-3xl rounded-tl-lg border border-accent/50 bg-accent/10 px-4 py-3.5 text-sm">
-              <p className="font-semibold">
-                {problem.code === "not_configured"
-                  ? "I'm not connected yet"
-                  : "Something went wrong"}
-              </p>
-              <p className="mt-1 text-ink-soft">
-                {problem.code === "not_configured"
-                  ? "Ask whoever manages WHSCOMPLY to switch me on."
-                  : problem.text}
-              </p>
-              {problem.code === "not_configured" && (
-                <p className="mt-2 text-xs text-ink-soft">
-                  For whoever sets this up: add{" "}
-                  <code className="rounded bg-tint px-1 py-0.5 font-mono">
-                    ANTHROPIC_API_KEY=...
-                  </code>{" "}
-                  to{" "}
-                  <code className="rounded bg-tint px-1 py-0.5 font-mono">
-                    .env.local
-                  </code>{" "}
-                  and restart the server.
-                </p>
-              )}
-            </div>
+          <div
+            role="alert"
+            className="rounded-2xl border border-accent/50 bg-accent/10 px-4 py-3.5 text-sm"
+          >
+            <p className="font-semibold">Something went wrong</p>
+            <p className="mt-1 text-ink-soft">{problem.text}</p>
           </div>
         )}
         <div ref={bottom} />
@@ -362,11 +479,11 @@ export function AssistantView() {
                 <Mascot className="mascot-bob h-20 w-20 shrink-0 sm:hidden" />
                 <div className="relative max-w-md rounded-3xl rounded-bl-lg bg-ink px-5 py-3 text-bg shadow-lg">
                   <p className="font-display text-lg font-extrabold leading-snug">
-                    G&apos;day {first}. What are we sorting out today?
+                    G&apos;day. What are we sorting out today?
                   </p>
                   <p className="mt-1 text-sm text-bg/75">
-                    Ask about WHS, check what needs attention, or tell me what
-                    to log and I&apos;ll draft it.
+                    Ask about WHS, or tell me what to get done across your
+                    sites. I make the changes. You approve each one.
                   </p>
                 </div>
               </div>
@@ -379,7 +496,7 @@ export function AssistantView() {
               className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-surface p-2 shadow-[0_12px_40px_-16px_oklch(0.23_0.02_255/0.35)] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
             >
               <label className="min-w-0 flex-1">
-                <span className="sr-only">Ask the assistant</span>
+                <span className="sr-only">Ask or instruct the assistant</span>
                 <textarea
                   ref={box}
                   value={input}
@@ -395,20 +512,14 @@ export function AssistantView() {
                       void send(input);
                     }
                   }}
-                  placeholder="Ask, or tell me what to log"
+                  placeholder="Ask, or tell me what to do"
                   className="max-h-44 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-ink-soft"
                 />
               </label>
-              <span className="hidden pb-1.5 sm:block">
-                <VoiceButton
-                  label="Speak"
-                  onText={(t) => setInput((v) => `${v}${v ? " " : ""}${t}`)}
-                />
-              </span>
               {busy ? (
                 <button
                   type="button"
-                  onClick={() => abort.current?.abort()}
+                  onClick={stop}
                   aria-label="Stop"
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg"
                 >
@@ -427,11 +538,222 @@ export function AssistantView() {
             </form>
           </div>
         </div>
-        <p className="mt-2 text-center text-[11px] text-ink-soft">
-          I can make mistakes. WHS answers are general information, not legal
-          advice. Data for the selected project is sent with each question.
-        </p>
+
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-1">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-ink-soft">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={askFirst}
+              onClick={toggleAsk}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                askFirst ? "bg-accent" : "bg-line"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                  askFirst ? "left-[1.1rem]" : "left-0.5"
+                }`}
+              />
+            </button>
+            Ask before making changes
+          </label>
+          <p className="text-[11px] text-ink-soft">
+            Can make mistakes. General information, not legal advice.
+          </p>
+        </div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function Reply({ parts, working }: { parts: Part[]; working: boolean }) {
+  // text and steps stay in the order they happened
+  const groups: { kind: "text" | "steps"; items: Part[] }[] = [];
+  for (const p of parts) {
+    const kind = p.type === "text" ? "text" : "steps";
+    const g = groups[groups.length - 1];
+    if (g && g.kind === kind) g.items.push(p);
+    else groups.push({ kind, items: [p] });
+  }
+  const idle =
+    working &&
+    !parts.some(
+      (p) =>
+        p.type === "tool" && (p.status === "running" || p.status === "pending"),
+    );
+
+  return (
+    <div className="space-y-4">
+      {groups.map((g, i) =>
+        g.kind === "text" ? (
+          <Markdown
+            key={i}
+            text={g.items
+              .map((p) => (p.type === "text" ? p.text : ""))
+              .join("")}
+          />
+        ) : (
+          <ol key={i} className="space-y-2">
+            {g.items.map(
+              (p) => p.type === "tool" && <Step key={p.id} part={p} />,
+            )}
+          </ol>
+        ),
+      )}
+      {idle && (
+        <div
+          className="inline-flex items-center gap-1.5 py-1"
+          role="status"
+          aria-label="Working"
+        >
+          {[0, 150, 300].map((d) => (
+            <span
+              key={d}
+              className="h-2 w-2 animate-bounce rounded-full bg-accent"
+              style={{ animationDelay: `${d}ms` }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status: ToolPart["status"] }) {
+  if (status === "running")
+    return (
+      <span
+        className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+        aria-label="Working"
+      />
+    );
+  const cls =
+    status === "done"
+      ? "bg-emerald-500 text-white"
+      : status === "pending"
+        ? "bg-accent text-white"
+        : "bg-line text-ink-soft";
+  return (
+    <span
+      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${cls}`}
+      aria-hidden="true"
+    >
+      {status === "done" ? (
+        <Icon name="check" className="h-2.5 w-2.5" />
+      ) : status === "pending" ? (
+        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+      ) : (
+        <Icon name="close" className="h-2.5 w-2.5" />
+      )}
+    </span>
+  );
+}
+
+const STATUS_LABEL: Record<ToolPart["status"], string> = {
+  pending: "Waiting for your approval",
+  running: "Working",
+  done: "Done",
+  declined: "Skipped",
+  error: "Could not do this",
+  cancelled: "Stopped",
+};
+
+function Step({ part }: { part: ToolPart }) {
+  // looking something up: a quiet one-line step
+  if (!part.write)
+    return (
+      <li className="flex items-center gap-2.5 text-[13px] text-ink-soft">
+        <StatusDot status={part.status} />
+        <span className="min-w-0">
+          {part.title}
+          {part.detail && (
+            <span className="text-ink-soft/70"> · {part.detail}</span>
+          )}
+        </span>
+        {part.link && part.status === "done" && (
+          <Link
+            href={part.link.path}
+            className="ml-1 shrink-0 font-semibold text-accent underline-offset-2 hover:underline"
+          >
+            {part.link.label}
+          </Link>
+        )}
+      </li>
+    );
+
+  // a change: a card with what will happen, and the choice when approval is needed
+  const pending = part.status === "pending";
+  return (
+    <li
+      className={`rounded-2xl border px-4 py-3 ${
+        pending
+          ? "border-accent/60 bg-accent/[0.07]"
+          : part.status === "error"
+            ? "border-red-300/60 bg-red-50/60"
+            : "border-line bg-surface"
+      }`}
+    >
+      <div className="flex items-start gap-2.5">
+        <span className="mt-1">
+          <StatusDot status={part.status} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold leading-snug">{part.title}</p>
+          {part.detail && (
+            <p className="mt-0.5 break-words text-[13px] leading-snug text-ink-soft">
+              {part.detail}
+            </p>
+          )}
+          {!pending && (
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
+              <span
+                className={
+                  part.status === "done"
+                    ? "font-semibold text-emerald-700"
+                    : part.status === "error"
+                      ? "font-semibold text-red-700"
+                      : "font-semibold"
+                }
+              >
+                {part.status === "done" && part.outcome
+                  ? part.outcome
+                  : part.status === "error" && part.outcome
+                    ? part.outcome
+                    : STATUS_LABEL[part.status]}
+              </span>
+              {part.link && part.status === "done" && (
+                <Link
+                  href={part.link.path}
+                  className="font-semibold text-accent underline-offset-2 hover:underline"
+                >
+                  {part.link.label}
+                </Link>
+              )}
+            </p>
+          )}
+          {pending && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => decide(part.id, true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-bg hover:bg-ink/85"
+              >
+                <Icon name="check" className="h-3.5 w-3.5" /> Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => decide(part.id, false)}
+                className="rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-tint"
+              >
+                Skip
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </li>
   );
 }

@@ -6,7 +6,7 @@ export const MODEL = process.env.AI_MODEL ?? "claude-sonnet-5-5";
 
 const hits = new Map<string, number[]>();
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_HITS = 40;
+const MAX_HITS = 90; // one agent run can take several calls
 
 function limited(ip: string) {
   const now = Date.now();
