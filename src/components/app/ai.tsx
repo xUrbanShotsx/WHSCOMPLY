@@ -156,9 +156,12 @@ export const AI_NOTE = "AI can make mistakes. Check it before you save.";
 export function VoiceButton({
   onText,
   label = "Speak",
+  compact = false,
 }: {
   onText: (t: string) => void;
   label?: string;
+  /** A round icon-only button, for tight places such as the Assistance message bar. */
+  compact?: boolean;
 }) {
   const [supported] = useState(
     () =>
@@ -212,6 +215,23 @@ export function VoiceButton({
     setOn(true);
     r.start();
   };
+
+  if (compact)
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={on}
+        aria-label={on ? "Stop dictating" : "Dictate"}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+          on
+            ? "bg-accent text-ink"
+            : "text-ink-soft hover:bg-tint hover:text-ink"
+        }`}
+      >
+        <Icon name="mic" className={`h-5 w-5 ${on ? "animate-pulse" : ""}`} />
+      </button>
+    );
 
   return (
     <button

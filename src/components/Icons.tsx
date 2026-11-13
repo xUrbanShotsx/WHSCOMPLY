@@ -100,6 +100,12 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
   home: <path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" />,
+  mic: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0014 0M12 18v3" />
+    </>
+  ),
   alert: (
     <>
       <path d="M12 3.500L2.500 20h19L12 3.500z" />

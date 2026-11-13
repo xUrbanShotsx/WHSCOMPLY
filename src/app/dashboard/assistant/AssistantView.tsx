@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/Icons";
-import { useAiContext } from "@/components/app/ai";
+import { useAiContext, VoiceButton } from "@/components/app/ai";
 import { useScope } from "@/components/app/DemoStore";
 import { Markdown } from "@/components/app/Markdown";
-import { Mascot } from "@/components/app/Mascot";
 import { SUGGESTIONS } from "@/lib/ai-context";
 import { btnLight } from "@/components/app/ui";
 import { toolByName } from "@/lib/agent-tools";
@@ -393,7 +392,13 @@ export function AssistantView() {
       : [];
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-11rem)] max-w-3xl flex-col">
+    <div
+      className={`mx-auto flex max-w-3xl flex-col ${
+        empty
+          ? "h-[calc(100dvh-10.5rem)] overflow-hidden"
+          : "min-h-[calc(100dvh-11rem)]"
+      }`}
+    >
       {!empty && (
         <div className="mb-4 flex items-center justify-between gap-3">
           <span className="flex min-w-0 flex-wrap items-center gap-2">
@@ -416,50 +421,38 @@ export function AssistantView() {
         </div>
       )}
 
-      <div className="flex-1 space-y-7 pb-6">
+      <div
+        className={`flex-1 space-y-7 pb-6 ${empty ? "flex flex-col justify-center" : ""}`}
+      >
         {empty && (
-          <div className="pt-4 sm:pt-10">
-            <div className="flex items-center gap-3">
-              <Mascot className="mascot-bob h-14 w-14 shrink-0 sm:hidden" />
-              <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Assistance
-              </h1>
-            </div>
+          <div>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Assistance
+            </h1>
             <p className="mt-3 max-w-xl text-ink-soft">
               Ask a question, or tell me what to get done. I can look across
-              your projects, SWMS, tickets, permits, plant, incidents and
-              programme, and make changes for you. You approve each change
+              your projects and make changes for you. You approve each change
               before it happens.
             </p>
-
-            <div className="mt-8 space-y-6">
-              {SUGGESTIONS.map((g) => (
-                <div key={g.label}>
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
-                    {g.label}
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {g.items.map((sg) => (
-                      <button
-                        key={sg.title}
-                        type="button"
-                        onClick={() => void send(sg.prompt)}
-                        className="group rounded-2xl border border-line bg-surface p-4 text-left transition-colors hover:border-ink hover:bg-tint/60"
-                      >
-                        <span className="flex items-center justify-between gap-2 text-sm font-bold">
-                          {sg.title}
-                          <Icon
-                            name="arrow"
-                            className="h-4 w-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5"
-                          />
-                        </span>
-                        <span className="mt-1 line-clamp-2 block text-[13px] leading-snug text-ink-soft">
-                          {sg.prompt}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              {SUGGESTIONS.map((sg, n) => (
+                <button
+                  key={sg.title}
+                  type="button"
+                  onClick={() => void send(sg.prompt)}
+                  className={`group rounded-2xl border border-line bg-surface p-4 text-left transition-colors hover:border-ink hover:bg-tint/60 ${n >= 2 ? "max-sm:hidden" : ""}`}
+                >
+                  <span className="flex items-center justify-between gap-2 text-sm font-bold">
+                    {sg.title}
+                    <Icon
+                      name="arrow"
+                      className="h-4 w-4 shrink-0 text-ink-soft transition-transform group-hover:translate-x-0.5"
+                    />
+                  </span>
+                  <span className="mt-1 line-clamp-2 block text-[13px] leading-snug text-ink-soft">
+                    {sg.prompt}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
@@ -517,62 +510,59 @@ export function AssistantView() {
         <div ref={bottom} />
       </div>
 
-      <div className="sticky bottom-0 -mx-4 bg-gradient-to-t from-bg from-70% to-transparent px-4 pb-4 pt-2 sm:-mx-8 sm:px-8">
-        <div className="flex items-end gap-3">
-          <Mascot
-            className={`mascot-bob hidden h-24 w-24 shrink-0 sm:block ${busy ? "opacity-90" : ""}`}
-          />
-          <div className="min-w-0 flex-1">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send(input);
+      <div className="sticky bottom-0 -mx-4 bg-bg px-4 pb-4 pt-3 sm:-mx-8 sm:px-8">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send(input);
+          }}
+          className="flex items-center gap-1.5 rounded-full border border-line bg-surface py-1.5 pl-5 pr-1.5 shadow-sm transition-colors focus-within:border-ink-soft"
+        >
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Ask or instruct the assistant</span>
+            <textarea
+              ref={box}
+              value={input}
+              rows={1}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
               }}
-              className="flex items-end gap-2 rounded-[1.75rem] border border-line bg-surface p-2 shadow-[0_12px_40px_-16px_oklch(0.23_0.02_255/0.35)] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send(input);
+                }
+              }}
+              placeholder="Ask, or tell me what to do"
+              className="block max-h-40 w-full resize-none bg-transparent py-2 text-[15px] leading-6 text-ink placeholder:text-ink-soft"
+            />
+          </label>
+          <VoiceButton
+            compact
+            onText={(t) => setInput((v) => `${v}${v ? " " : ""}${t}`)}
+          />
+          {busy ? (
+            <button
+              type="button"
+              onClick={stop}
+              aria-label="Stop"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg"
             >
-              <label className="min-w-0 flex-1">
-                <span className="sr-only">Ask or instruct the assistant</span>
-                <textarea
-                  ref={box}
-                  value={input}
-                  rows={1}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void send(input);
-                    }
-                  }}
-                  placeholder="Ask, or tell me what to do"
-                  className="max-h-44 w-full resize-none bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-ink-soft"
-                />
-              </label>
-              {busy ? (
-                <button
-                  type="button"
-                  onClick={stop}
-                  aria-label="Stop"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-bg"
-                >
-                  <span className="h-3 w-3 rounded-sm bg-bg" />
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  aria-label="Send"
-                  disabled={!input.trim()}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-30"
-                >
-                  <Icon name="arrow" className="h-4 w-4 -rotate-90" />
-                </button>
-              )}
-            </form>
-          </div>
-        </div>
+              <span className="h-3 w-3 rounded-sm bg-bg" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              aria-label="Send"
+              disabled={!input.trim()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-ink transition-opacity disabled:opacity-30"
+            >
+              <Icon name="arrow" className="h-4 w-4 -rotate-90" />
+            </button>
+          )}
+        </form>
 
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-1">
           <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-ink-soft">
